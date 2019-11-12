@@ -1,24 +1,20 @@
-package main
+package cmd
 
 import (
-	"flag"
-    "fmt"
+	"fmt"
     "io/ioutil"
     "net/http"
     "time"
     jwt "github.com/dgrijalva/jwt-go"
 )
 
-var mySigningKey = []byte("kGay08Hf5KvSIhYREkiq2FJYNstQsrTK")
-
 func SendRequest(cmdName string) {
     validToken, err := GenerateJWT()
     if err != nil {
         fmt.Println("Failed to generate token")
     }
-
     client := &http.Client{}
-    req, _ := http.NewRequest("GET", fmt.Sprintf("http://localhost:8000/run/%s", cmdName), nil)
+    req, _ := http.NewRequest("GET", fmt.Sprintf("%s/run/%s", Config.Serverurl, cmdName), nil)
     req.Header.Set("Token", validToken)
     res, err := client.Do(req)
     if err != nil {
@@ -34,14 +30,13 @@ func SendRequest(cmdName string) {
 
 func GenerateJWT() (string, error) {
     token := jwt.New(jwt.SigningMethodHS256)
-
     claims := token.Claims.(jwt.MapClaims)
 
     claims["authorized"] = true
-    claims["client"] = "Elliot Forbes"
+    claims["client"] = "nsca-go client"
     claims["exp"] = time.Now().Add(time.Minute * 30).Unix()
 
-    tokenString, err := token.SignedString(mySigningKey)
+    tokenString, err := token.SignedString([]byte(Config.JwtKey))
 
     if err != nil {
         fmt.Errorf("Something Went Wrong: %s", err.Error())
@@ -51,8 +46,7 @@ func GenerateJWT() (string, error) {
     return tokenString, nil
 }
 
-func main() {
-	cmdName := flag.String("cmd", "", "Command name")
-	flag.Parse()
-	SendRequest(*cmdName)
+//NcsClient -
+func NcsClient(cmdName string) {
+	SendRequest(cmdName)
 }
