@@ -25,4 +25,5 @@ logs.db*
 gnote
 .vscode
 syslog*
-gnote-linux-amd64
+nsre*
+
