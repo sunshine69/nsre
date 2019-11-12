@@ -8,7 +8,8 @@ import (
     jwt "github.com/dgrijalva/jwt-go"
 )
 
-func SendRequest(cmdName string) {
+//RunCommand -
+func RunCommand(cmdName string) {
     validToken, err := GenerateJWT()
     if err != nil {
         fmt.Println("Failed to generate token")
@@ -46,7 +47,3 @@ func GenerateJWT() (string, error) {
     return tokenString, nil
 }
 
-//NcsClient -
-func NcsClient(cmdName string) {
-	SendRequest(cmdName)
-}

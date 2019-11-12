@@ -13,10 +13,10 @@ type Command struct {
 //LogFile -
 type LogFile struct {
     Path string
-    Timelayout string
-    Timepattern string
-    Pattern string
-    Timeadjust string
+    Timelayout string //Parse the match below into go time object
+    Timepattern string //extract the timestamp part into a timeStr which is fed into the Timelayout
+	Timeadjust string //If the time extracted string miss some info (like year or zone etc) this string will be appended to the string
+	Pattern string //will be matched to extract the HOSTNAME APP-NAME MSG part of the line.
 }
 //AppConfig -
 type AppConfig struct { //Why do I have to tag every field! Because yaml driver automatically lowercase the field name to look into the yaml file <yuk>
@@ -25,6 +25,7 @@ type AppConfig struct { //Why do I have to tag every field! Because yaml driver 
     JwtKey string
     Logfiles []LogFile
     Serverurl string
+    Logdbpath string
 }
 
 //Config - Global
@@ -42,6 +43,7 @@ port: 8000
 # Used in client mode to send to the server
 serverurl: http://localhost:8000
 jwtkey: kGay08Hf5KvSIhYREkiq2FJYNstQsrTK
+logdbpath: logs.db
 # commands list to allow remote execution.
 commands:
     - name: example_ls
@@ -50,7 +52,7 @@ logfiles:
     - name: syslog
       path: /var/log/syslog
       timelayout: "Jan 02 15:04:05 2006 MST"
-      timepattern: '([a-zA-Z]{3,3} [\d]{0,2} [\d]{2,2}\:[\d]{2,2}\:[\d]{2,2}\:) '
+      timepattern: '([a-zA-Z]{3,3} [\d]{0,2} [\d]{2,2}\:[\d]{2,2}\:[\d]{2,2}) '
       timeadjust: "2019 AEST"
       pattern: '([^\s]+) ([^\s]+) (.*)$'
 `

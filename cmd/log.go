@@ -1,47 +1,41 @@
 package cmd
 
 import (
-
-	"net"
+	"sync"
+	"strings"
+	"bytes"
+	"io/ioutil"
+	"net/http"
 	"time"
 	"regexp"
 	// "syscall"
 	// "os/signal"
-	// "os"
+	"os"
 	"log"
 	"fmt"
 	"github.com/hpcloud/tail"
-
+	"github.com/json-iterator/go"
 )
+
+// type TailConfig tail.Config
+
 //TailLogConfig -
 type TailLogConfig struct {
-    Path string
-    Timelayout string //Parse the match below into go time object
-    Timepattern string //extract the timestamp part into a timeStr which is fed into the Timelayout
-	Timeadjust string //If the time extracted string miss some info (like year or zone etc) this string will be appended to the string
-	Pattern string //will be matched to extract the HOSTNAME APP-NAME PROC-ID MSGID MSG part of the line.
+    LogFile
 	SeekOffset int64
-	Ekanitehost string
+	TailConfig tail.Config
 }
 
 //TailLog -
-func TailLog(cfg *TailLogConfig){
+func TailLog(cfg *TailLogConfig, wg *sync.WaitGroup){
 	// offset − This is the position of the read/write pointer within the file.
 	// whence − This is optional and defaults to 0 which means absolute file positioning, other values are 1 which means seek relative to the current position and 2 means seek relative to the file's end.
 
 	seek := &tail.SeekInfo{Offset: cfg.SeekOffset, Whence: 0}
+	cfg.TailConfig.Location = seek
 
-	tailConfig := tail.Config {
-		Location:    seek,
-		ReOpen:      true,
-		MustExist:   false,
-		Poll:        false,
-		Pipe:        false,
-    	Follow:      true,
-    	MaxLineSize: 0,
-	}
-
-	t, e := tail.TailFile(cfg.Path, tailConfig)
+	// log.Printf("Start tailling config  %v\n", cfg)
+	t, e := tail.TailFile(cfg.Path, cfg.TailConfig)
 	if e != nil {
 		log.Fatalf("Can not tail file - %v\n", e)
 	}
@@ -56,6 +50,7 @@ func TailLog(cfg *TailLogConfig){
 	// s := <-c
 	// log.Print(s.String())
 	// t.Stop()
+	wg.Done()
 }
 //ProcessLines -
 func ProcessLines(cfg *TailLogConfig, tailLines chan *tail.Line) {
@@ -71,37 +66,69 @@ func ProcessLines(cfg *TailLogConfig, tailLines chan *tail.Line) {
 	var timeParsed time.Time
 	var e error
 
-	conn, e := net.Dial("tcp", cfg.Ekanitehost)
-	if e != nil {
-		log.Fatalf("ERROR can not dial to host %s\n", cfg.Ekanitehost)
-	}
+	var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
+	client := &http.Client{}
+    validToken, err := GenerateJWT()
+    if err != nil {
+        fmt.Println("Failed to generate token")
+	}
 
 	for line := range tailLines {
 
 		match := timePtn.FindStringSubmatch(line.Text)
 		if len(match) > 0 {
 			timeStr := fmt.Sprintf("%s %s", match[1], cfg.Timeadjust)
+			timeStr = strings.Replace(timeStr, "  ", " ", -1)
 			timeParsed, e = time.Parse(timeLayout, timeStr)
 			if e != nil {
-				log.Printf("ERROR Fail to parse time\n")
+				log.Fatalf("ERROR Fail to parse time %v\n", e)
 			}
-			timeStr = timeParsed.Format(TimeISO8601LayOut)
+
 			match1 := linePtn.FindStringSubmatch(line.Text)
-			log.Printf("Matched groups: %d\n", len(match1))
-			if len(match1) > 0 {
-				hostStr, appNameStr, procIDStr, msgIDStr, msgStr := match1[2], match1[3], "-", "-", match1[4]
-				output := fmt.Sprintf("<134>0 %s %s %s %s %s %s", timeStr, hostStr, appNameStr, procIDStr, msgIDStr, msgStr)
-				fmt.Printf("Going to Send Line Text: '%s'\n", output)
-				fmt.Fprintf(conn, output + "\n")
-				// message, _ := bufio.NewReader(conn).ReadString('\n')
-				// log.Print("Message from server: "+message)
+			matchCount := len(match1)
+			if matchCount > 0 {
+				var hostStr, appNameStr, msgStr string
+				switch matchCount {
+				case 3:
+					curHostname, _ := os.Hostname()
+					hostStr, appNameStr, msgStr = curHostname, "-", match1[2]
+				case 4:
+					hostStr, appNameStr, msgStr = match1[2], "-", match1[3]
+				case 5:
+					hostStr, appNameStr, msgStr = match1[2], match1[3], match1[4]
+				}
+
+				logData := LogData{
+					Timestamp: time.Now().UnixNano(),
+					Datelog: timeParsed.UnixNano(),
+					Host: hostStr,
+					Application: appNameStr,
+					Message: msgStr,
+				}
+				output, e := json.Marshal(&logData)
+				if e != nil {
+					log.Fatalf("ERROR - can not marshal json to output - %v\n", e)
+				}
+
+				req, _ := http.NewRequest("POST", fmt.Sprintf("%s/log", Config.Serverurl), bytes.NewBuffer(output))
+				req.Header.Set("Token", validToken)
+				req.Header.Set("Content-Type", "application/json")
+
+				res, err := client.Do(req)
+				if err != nil {
+					fmt.Printf("Error: %v", err)
+				}
+				_, err = ioutil.ReadAll(res.Body)
+				if err != nil {
+					fmt.Println(err)
+				}
 			} else {
-				log.Fatalf("The pattern does not parse into 6 component. You need to have 6 capture groups - TIMESTAMP HOSTNAME APP-NAME PROC-ID MSGID MSG\n")
+				log.Fatalf("The pattern does not parse correct components. You need to have capture groups - TIMESTAMP HOSTNAME APP-NAME MSG\n")
 			}
 		} else {
 			fmt.Printf("Line Text: '%s'\n", line.Text)
-			log.Fatalf("Can not parse the time pattern\n")
+			log.Printf("Can not parse the time pattern\n")
 		}
 	}
 }
