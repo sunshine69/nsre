@@ -12,6 +12,7 @@ type Command struct {
 }
 //LogFile -
 type LogFile struct {
+    Name string //Must be unique within a host running this app. Used to save the tail pos
     Path string
     Timelayout string //Parse the match below into go time object
     Timepattern string //extract the timestamp part into a timeStr which is fed into the Timelayout
@@ -56,7 +57,7 @@ logfiles:
       timepattern: '^([a-zA-Z]{3,3} [\d]{0,2} [\d]{2,2}\:[\d]{2,2}\:[\d]{2,2}) '
       timeadjust: "2019 AEST"
       pattern: '([^\s]+) ([^\s]+) (.*)$'
-      multilineptn: '^[\s\t]+([^\s]+.*)$'
+      multilineptn: '([^\s]+.*)$'
 `
     err := ioutil.WriteFile(fPath, []byte(defaultConfig), 0600)
     if err != nil {return err}

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"path/filepath"
 	"github.com/hpcloud/tail"
 	"sync"
 	"os"
@@ -11,11 +12,11 @@ import (
 )
 
 func main() {
-	defaultConfig :=  fmt.Sprintf("%s/.nsca-go.yaml", os.Getenv("HOME"))
+	defaultConfig :=  filepath.Join(os.Getenv("HOME"), ".nsre.yaml")
 	configFile := flag.String("c", defaultConfig, fmt.Sprintf("Config file, default %s", defaultConfig))
 	mode := flag.String("m", "client", "run mode. Can be server|client|tail|reset.\nserver - start nsca server and wait for command.\nclient - take another option -cmd which is the command to send to the server.\ntail - tail the log and send to the log server.\nreset - reset the config using default")
 	cmdName := flag.String("cmd", "", "Command name")
-	tailFollow := flag.Bool("tailf", false, "Tail mode follow|")
+	tailFollow := flag.Bool("tailf", false, "Tail mode follow")
 	flag.Parse()
 
 	tailCfg := tail.Config{
@@ -52,7 +53,11 @@ func main() {
 			go cmd.TailLog(&_tailLogConfig, &wg)
 		}
 		wg.Wait()
-	case "reset":
+	case "reset", "setup":
+		files, _ := filepath.Glob(filepath.Join(os.Getenv("HOME"), "taillog*"))
+		for _, f := range(files) {
+			os.Remove(f)
+		}
 		cmd.GenerateDefaultConfig(*configFile)
 	}
 }

@@ -1,8 +1,9 @@
 package cmd
 
 import (
+	"strconv"
+	"path/filepath"
 	"io"
-
 	"sync"
 	"strings"
 	"bytes"
@@ -10,8 +11,8 @@ import (
 	"net/http"
 	"time"
 	"regexp"
-	// "syscall"
-	// "os/signal"
+	"syscall"
+	"os/signal"
 	"os"
 	"log"
 	"fmt"
@@ -33,27 +34,61 @@ func TailLog(cfg *TailLogConfig, wg *sync.WaitGroup){
 	// offset − This is the position of the read/write pointer within the file.
 	// whence − This is optional and defaults to 0 which means absolute file positioning, other values are 1 which means seek relative to the current position and 2 means seek relative to the file's end.
 
-	seek := &tail.SeekInfo{Offset: cfg.SeekOffset, Whence: 0}
+	previousPos := LoadTailPosition(cfg)
+	seek := &tail.SeekInfo{Offset: previousPos, Whence: 0}
 	cfg.TailConfig.Location = seek
 
-	// log.Printf("Start tailling config  %v\n", cfg)
 	t, e := tail.TailFile(cfg.Path, cfg.TailConfig)
 	if e != nil {
 		log.Fatalf("Can not tail file - %v\n", e)
 	}
-	// c := make(chan os.Signal)
-	// signal.Notify(c,
-	// 	syscall.SIGHUP,
-	// 	syscall.SIGINT,
-	// 	syscall.SIGTERM,
-	// 	syscall.SIGQUIT)
+	c := make(chan os.Signal, 4)
+	signal.Notify(c,
+		syscall.SIGHUP,
+		syscall.SIGINT,
+		syscall.SIGTERM,
+		syscall.SIGQUIT)
 
-	ProcessLines(cfg, t)
-	// s := <-c
-	// log.Print(s.String())
-	// t.Stop()
+	go ProcessLines(cfg, t)
+	s := <-c
+	log.Printf("%s captured. Do cleaning up\n", s.String())
+	SaveTailPosition(t, cfg)
+	t.Stop()
 	wg.Done()
 }
+
+//SaveTailPosition -
+func SaveTailPosition(t *tail.Tail, cfg *TailLogConfig) {
+	pos, e := t.Tell()
+	if e != nil {
+		log.Printf("Can not tell from tail where are we - %v\n", e)
+	} else {
+		filename := filepath.Join(os.Getenv("HOME"), "taillog-" + cfg.Name)
+		_pos := strconv.FormatInt(pos, 10)
+		if e = ioutil.WriteFile(filename, []byte(_pos), 0750); e != nil {
+			log.Printf("ERROR Can not save pos to %s - %v\n",filename ,e)
+		}
+	}
+}
+
+//LoadTailPosition -
+func LoadTailPosition(cfg *TailLogConfig) (int64) {
+	filename := filepath.Join(os.Getenv("HOME"), "taillog-" + cfg.Name)
+	data, e := ioutil.ReadFile(filename)
+	if e != nil {
+		log.Printf("ERROR Can not read previous pos. Will set seek to 0 - %s\n", e)
+		// os.Remove(filename)
+		return 0
+	}
+	out, e := strconv.ParseInt(string(data), 10, 64)
+	if e != nil {
+		log.Printf("ERROR Can not parse int previous pos. Will set seek to 0 - %s\n", e)
+		return 0
+	}
+	log.Printf("Loaded previous file pos %d from %s. To set from beginnng remove the file\n", out, filename)
+	return out
+}
+
 
 //IsEOF - NOt sure why tail does not provide this test.
 func IsEOF(filename string, seek int64) (bool) {
