@@ -58,6 +58,7 @@ func TailLog(cfg *TailLogConfig, wg *sync.WaitGroup){
 //IsEOF - NOt sure why tail does not provide this test.
 func IsEOF(filename string, seek int64) (bool) {
 	fh, e := os.Open(filename)
+	defer fh.Close()
 	if e != nil {
 		fmt.Printf("ERROR can not open file - %v\n", e)
 	}
