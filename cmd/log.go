@@ -38,23 +38,25 @@ func TailLog(cfg *TailLogConfig, wg *sync.WaitGroup){
 	seek := &tail.SeekInfo{Offset: previousPos, Whence: 0}
 	cfg.TailConfig.Location = seek
 
-	t, e := tail.TailFile(cfg.Path, cfg.TailConfig)
-	if e != nil {
-		log.Fatalf("Can not tail file - %v\n", e)
-	}
-	c := make(chan os.Signal, 4)
-	signal.Notify(c,
-		syscall.SIGHUP,
-		syscall.SIGINT,
-		syscall.SIGTERM,
-		syscall.SIGQUIT)
+	for _, logFile := range(cfg.Paths) {
+		t, e := tail.TailFile(logFile, cfg.TailConfig)
+		if e != nil {
+			log.Fatalf("Can not tail file - %v\n", e)
+		}
+		c := make(chan os.Signal, 4)
+		signal.Notify(c,
+			syscall.SIGHUP,
+			syscall.SIGINT,
+			syscall.SIGTERM,
+			syscall.SIGQUIT)
 
-	go ProcessLines(cfg, t)
-	s := <-c
-	log.Printf("%s captured. Do cleaning up\n", s.String())
-	SaveTailPosition(t, cfg)
-	t.Stop()
-	wg.Done()
+		go ProcessLines(cfg, t)
+		s := <-c
+		log.Printf("%s captured. Do cleaning up\n", s.String())
+		SaveTailPosition(t, cfg)
+		t.Stop()
+		wg.Done()
+	}
 }
 
 //SaveTailPosition -

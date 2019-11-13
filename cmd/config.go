@@ -13,7 +13,7 @@ type Command struct {
 //LogFile -
 type LogFile struct {
     Name string //Must be unique within a host running this app. Used to save the tail pos
-    Path string
+    Paths []string
     Timelayout string //Parse the match below into go time object
     Timepattern string //extract the timestamp part into a timeStr which is fed into the Timelayout
 	Timeadjust string //If the time extracted string miss some info (like year or zone etc) this string will be appended to the string
@@ -52,7 +52,8 @@ commands:
       path: /bin/ls
 logfiles:
     - name: syslog
-      path: /var/log/syslog
+      paths:
+        - /var/log/syslog
       timelayout: "Jan 02 15:04:05 2006 MST"
       timepattern: '^([a-zA-Z]{3,3} [\d]{0,2} [\d]{2,2}\:[\d]{2,2}\:[\d]{2,2}) '
       timeadjust: "2019 AEST"
