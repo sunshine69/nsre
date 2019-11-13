@@ -105,8 +105,8 @@ func ProcessSearchLog(w http.ResponseWriter, r *http.Request) {
 	</form>
 	<hr/>
 	<h2>Result:</h2>
-
-    {{ . }}
+	<p>Found {{ .count }} records</p>
+    {{ .output }}
 
 </body>`
 	var output strings.Builder
@@ -120,9 +120,9 @@ func ProcessSearchLog(w http.ResponseWriter, r *http.Request) {
 
 	case "POST":
 		keyword := r.FormValue("keyword")
-		SearchLog(keyword, &output)
+		c := SearchLog(keyword, &output)
 		t := template.Must(template.New("webgui").Parse(tString))
-		e := t.Execute(w, output.String())
+		e := t.Execute(w, map[string]string{"count": fmt.Sprintf("%d", c), "output": output.String()})
 		if e != nil {
 			fmt.Printf("%v\n", e)
 		}
@@ -130,7 +130,7 @@ func ProcessSearchLog(w http.ResponseWriter, r *http.Request) {
 }
 
 //SearchLog -
-func SearchLog(keyword string, o *strings.Builder) {
+func SearchLog(keyword string, o *strings.Builder) (int) {
 	q := ""
 	keyword = strings.TrimSpace(keyword)
 	tokens := strings.Split(keyword, " & ")
@@ -158,6 +158,7 @@ func SearchLog(keyword string, o *strings.Builder) {
 	}
 	defer stmt.Close()
 	fmt.Fprintf(o, "<table>")
+	count := 0
 	for {
 		hasRow, err := stmt.Step()
 		if err != nil {
@@ -176,8 +177,10 @@ func SearchLog(keyword string, o *strings.Builder) {
 		timestamp, datelog := NsToTime(timestampVal), NsToTime(datelogVal)
 		line := fmt.Sprintf("<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>", timestamp.Format("02/01/2006 15:04:05 MST"), datelog.Format("02/01/2006 15:04:05 MST"), host, application, msg)
 		fmt.Fprintf(o, line)
+		count = count + 1
 	}
 	fmt.Fprintf(o, "</table>")
+	return count
 }
 
 //HandleRequests -
