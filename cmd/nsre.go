@@ -101,7 +101,7 @@ func ProcessSearchLog(w http.ResponseWriter, r *http.Request) {
             <tr>
                 <td colspan="2" align="center"><input name="submit" type="submit" value="submit" /></td>
             </tr>
-    </table>
+    	</table>
 	</form>
 	<hr/>
 	<h2>Result:</h2>

@@ -50,7 +50,7 @@ func TailLog(cfg *TailLogConfig, wg *sync.WaitGroup){
 			syscall.SIGTERM,
 			syscall.SIGQUIT)
 
-		go ProcessLines(cfg, t)
+		go ProcessTailLines(cfg, t)
 		s := <-c
 		log.Printf("%s captured. Do cleaning up\n", s.String())
 		SaveTailPosition(t, cfg)
@@ -142,8 +142,8 @@ func SendLine(timeParsed time.Time, hostStr, appNameStr, msgStr string) {
 	}
 }
 
-//ProcessLines -
-func ProcessLines(cfg *TailLogConfig, tail *tail.Tail) {
+//ProcessTailLines -
+func ProcessTailLines(cfg *TailLogConfig, tail *tail.Tail) {
 	tailLines := tail.Lines
 	timePtn := regexp.MustCompile(cfg.Timepattern)
 	linePtnStr := fmt.Sprintf("%s%s", cfg.Timepattern, cfg.Pattern)
