@@ -43,7 +43,7 @@ func GenerateDefaultConfig(fPath string) (e error) {
 port: 8000
 # Used in client mode to send to the server
 serverurl: http://localhost:8000
-jwtkey: kGay08Hf5KvSIhYREkiq2FJYNstQsrTK
+jwtkey: ChangeThisKeyInYourSystem
 logdbpath: logs.db
 # commands list to allow remote execution.
 commands:
