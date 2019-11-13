@@ -175,7 +175,15 @@ func SearchLog(keyword string, o *strings.Builder) (int) {
 			log.Printf("ERROR - %v\n", err)
 		}
 		timestamp, datelog := NsToTime(timestampVal), NsToTime(datelogVal)
-		line := fmt.Sprintf("<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>", timestamp.Format("02/01/2006 15:04:05 MST"), datelog.Format("02/01/2006 15:04:05 MST"), host, application, msg)
+		AUTimeLayout := "02/01/2006 15:04:05 MST"
+		line := fmt.Sprintf(`
+		<tr>
+			<td>%s</td>
+			<td>%s</td>
+			<td>%s</td>
+			<td>%s</td>
+			<td>%s</td>
+		</tr>`, timestamp.Format(AUTimeLayout), datelog.Format(AUTimeLayout), host, application, msg)
 		fmt.Fprintf(o, line)
 		count = count + 1
 	}
