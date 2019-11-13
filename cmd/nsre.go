@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"text/template"
 	"io/ioutil"
 	"time"
 	"bytes"
@@ -83,12 +84,109 @@ func ProcessCommand(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+//ProcessSearchLog -
+func ProcessSearchLog(w http.ResponseWriter, r *http.Request) {
+	const tString = `<!DOCTYPE html>
+<head>
+    <title>webgui</title>
+</head>
+<body>
+    <h1>Search Log</h1>
+    <form action="/searchlog" method="POST">
+        <table>
+            <tr>
+                <td><label for="keyword">Keyword: </label></td>
+                <td><input name="keyword" id="keyword" type="text" value=""/></td>
+            </tr>
+            <tr>
+                <td colspan="2" align="center"><input name="submit" type="submit" value="submit" /></td>
+            </tr>
+    </table>
+	</form>
+	<hr/>
+	<h2>Result:</h2>
+
+    {{ . }}
+
+</body>`
+	var output strings.Builder
+	switch r.Method {
+	case "GET":
+		t := template.Must(template.New("webgui").Parse(tString))
+		e := t.Execute(w, output.String())
+		if e != nil {
+			fmt.Printf("%v\n", e)
+		}
+
+	case "POST":
+		keyword := r.FormValue("keyword")
+		SearchLog(keyword, &output)
+		t := template.Must(template.New("webgui").Parse(tString))
+		e := t.Execute(w, output.String())
+		if e != nil {
+			fmt.Printf("%v\n", e)
+		}
+	}
+}
+
+//SearchLog -
+func SearchLog(keyword string, o *strings.Builder) {
+	q := ""
+	keyword = strings.TrimSpace(keyword)
+	tokens := strings.Split(keyword, " & ")
+	_l := len(tokens)
+
+	for i, t := range(tokens) {
+		if i == _l - 1 {
+			q = fmt.Sprintf("%s (host LIKE '%%%s%%' OR application LIKE '%%%s%%' OR message LIKE '%%%s%%') ORDER BY timestamp DESC LIMIT 200;", q, t, t, t)
+		} else {
+			q = fmt.Sprintf("%s (host LIKE '%%%s%%' OR application LIKE '%%%s%%' OR message LIKE '%%%s%%') AND ", q, t, t, t)
+		}
+	}
+	q = fmt.Sprintf("SELECT timestamp, datelog, host, application, message from log WHERE %s", q)
+	fmt.Println(q)
+
+	conn, err := sqlite3.Open(Config.Logdbpath)
+	if err != nil {
+		log.Fatalf("ERROR - can not open log database file - %v\n", err)
+	}
+	defer conn.Close()
+
+	stmt, err := conn.Prepare(q)
+	if err != nil {
+		log.Printf("ERROR - %v\n", err)
+	}
+	defer stmt.Close()
+	fmt.Fprintf(o, "<table>")
+	for {
+		hasRow, err := stmt.Step()
+		if err != nil {
+			log.Printf("ERROR - %v\n", err)
+		}
+		if !hasRow {
+			break
+		}
+		var timestampVal, datelogVal int64
+		var host, application, msg string
+
+		err = stmt.Scan(&timestampVal, &datelogVal, &host, & application, &msg)
+		if err != nil {
+			log.Printf("ERROR - %v\n", err)
+		}
+		timestamp, datelog := NsToTime(timestampVal), NsToTime(datelogVal)
+		line := fmt.Sprintf("<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>", timestamp.Format("02/01/2006 15:04:05 MST"), datelog.Format("02/01/2006 15:04:05 MST"), host, application, msg)
+		fmt.Fprintf(o, line)
+	}
+	fmt.Fprintf(o, "</table>")
+}
+
 //HandleRequests -
 func HandleRequests() {
 	router := mux.NewRouter()
 	router.Handle("/", isAuthorized(homePage)).Methods("GET")
 	router.Handle("/run/{CommandName}", isAuthorized(ProcessCommand)).Methods("GET")
 	router.Handle("/log", isAuthorized(ProcessLog)).Methods("POST")
+	router.HandleFunc("/searchlog", ProcessSearchLog)
 	log.Printf("Start server on port %d\n", Config.Port)
     log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", Config.Port), router))
 }
