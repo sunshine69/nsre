@@ -37,24 +37,28 @@ func main() {
 	serverURL := flag.String("url", "", "Server uri to post log to in tailSimple mode")
 	appName := flag.String("appname", "", "Application name in tailSimple mode")
 	jwtkey := flag.String("jwtkey", "", "JWT API Key to talk to server")
-	sslcert := flag.String("cert", "", "SSL certificate path")
-	sslkey := flag.String("key", "", "SSL key path")
+	sslcert := flag.String("sslcert", "", "SSL certificate path")
+	sslkey := flag.String("sslkey", "", "SSL key path")
 
 	flag.Parse()
 
 	e := cmd.LoadConfig(*configFile)
 
+	var generateDefaultConfig = func() (error) {
+		return cmd.GenerateDefaultConfig(
+			"file", *configFile,
+			"serverurl", *serverURL,
+			"jwtkey", *jwtkey,
+			"logfile", *tailFile,
+			"appname", *appName,
+			"sslcert", *sslcert,
+			"sslkey", *sslkey,
+		)
+	}
+
 	if e != nil {
 		log.Printf("Error reading config file. %v\nGenerating new one\n", e)
-		if e = cmd.GenerateDefaultConfig(
-				"file", *configFile,
-				"serverurl", *serverURL,
-				"jwtkey", *jwtkey,
-				"logfile", *tailFile,
-				"appname", *appName,
-				"sslcert", *sslcert,
-				"sslkey", *sslkey,
-			); e != nil {
+		if generateDefaultConfig() != nil {
 			log.Fatalf("ERROR can not generate config file %v\n", e)
 		}
 	}
@@ -86,12 +90,8 @@ func main() {
 			os.Remove(f)
 		}
 		log.Printf("Going to generate config...")
-		cmd.GenerateDefaultConfig(
-			"file", *configFile,
-			"serverurl", *serverURL,
-			"jwtkey", *jwtkey,
-			"logfile", *tailFile,
-			"appname", *appName,
-		)
+		if generateDefaultConfig() != nil {
+			log.Fatalf("ERROR can not generate config file %v\n", e)
+		}
 	}
 }

@@ -199,6 +199,7 @@ func HandleRequests() {
 	router.Handle("/log", isAuthorized(ProcessLog)).Methods("POST")
 	router.HandleFunc("/searchlog", ProcessSearchLog)
 	if Config.Sslkey != "" {
+		log.Printf("Start SSL/TLS server on port %d\n", Config.Port)
 		log.Fatal(http.ListenAndServeTLS(fmt.Sprintf(":%d", Config.Port), Config.Sslcert, Config.Sslkey, router))
 	} else {
 		log.Printf("Start server on port %d\n", Config.Port)
