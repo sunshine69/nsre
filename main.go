@@ -6,7 +6,6 @@ import (
 	"github.com/hpcloud/tail"
 	"sync"
 	"os"
-	"fmt"
 	"log"
 	"flag"
 	"github.com/sunshine69/nsre/cmd"
@@ -28,7 +27,7 @@ func startTailServer(tailCfg tail.Config) {
 
 func main() {
 	defaultConfig :=  filepath.Join(os.Getenv("HOME"), ".nsre.yaml")
-	configFile := flag.String("c", defaultConfig, fmt.Sprintf("Config file, default %s", defaultConfig))
+	configFile := flag.String("c", defaultConfig, "Config file, default %s"+ defaultConfig)
 	mode := flag.String("m", "client", "run mode. Can be server|client|tail|tailserver|reset.\nserver - start nsca server and wait for command.\nclient - take another option -cmd which is the command to send to the server.\ntail - tail the log and send to the log server.\nreset - reset the config using default")
 	cmdName := flag.String("cmd", "", "Command name")
 	tailFollow := flag.Bool("tailf", false, "Tail mode follow")

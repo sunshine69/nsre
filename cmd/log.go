@@ -39,6 +39,7 @@ func TailLog(cfg *TailLogConfig, wg *sync.WaitGroup){
 	cfg.TailConfig.Location = seek
 
 	for _, logFile := range(cfg.Paths) {
+		log.Printf("Start tailing %s\n", logFile)
 		t, e := tail.TailFile(logFile, cfg.TailConfig)
 		if e != nil {
 			log.Fatalf("Can not tail file - %v\n", e)
@@ -70,7 +71,7 @@ func SaveTailPosition(t *tail.Tail, cfg *TailLogConfig) {
 	if e != nil {
 		log.Printf("Can not tell from tail where are we - %v\n", e)
 	} else {
-		filename := filepath.Join(os.Getenv("HOME"), "taillog-" + cfg.Name)
+		filename := filepath.Join(os.Getenv("HOME"), "taillog-" + cfg.Name + filepath.Base(t.Filename))
 		_pos := strconv.FormatInt(pos, 10)
 		if e = ioutil.WriteFile(filename, []byte(_pos), 0750); e != nil {
 			log.Printf("ERROR Can not save pos to %s - %v\n",filename ,e)
@@ -133,7 +134,7 @@ func SendLine(timeParsed time.Time, hostStr, appNameStr, msgStr string) {
     if err != nil {
         fmt.Println("Failed to generate token")
 	}
-	req, _ := http.NewRequest("POST", fmt.Sprintf("%s/log", Config.Serverurl), bytes.NewBuffer(output))
+	req, _ := http.NewRequest("POST", strings.Join([]string{Config.Serverurl, "log"}, "/"), bytes.NewBuffer(output))
 	req.Header.Set("Token", validToken)
 	req.Header.Set("Content-Type", "application/json")
 
@@ -151,7 +152,7 @@ func SendLine(timeParsed time.Time, hostStr, appNameStr, msgStr string) {
 func ProcessTailLines(cfg *TailLogConfig, tail *tail.Tail) {
 	tailLines := tail.Lines
 	var timePtn, linePtn, multiLinePtn *regexp.Regexp
-	linePtnStr := fmt.Sprintf("%s%s", cfg.Timepattern, cfg.Pattern)
+	linePtnStr := strings.Join([]string{cfg.Timepattern, cfg.Pattern}, "" )
 	linePtn = regexp.MustCompile(linePtnStr)
 	multiLinePtn = regexp.MustCompile(cfg.Multilineptn)
 
@@ -197,7 +198,7 @@ func ProcessTailLines(cfg *TailLogConfig, tail *tail.Tail) {
 				SendLine(timeParsed, hostStr, appNameStr, msgStr)
 			}
 			if match[0] != "notimeptn" {
-				timeStr := fmt.Sprintf("%s %s", match[1], cfg.Timeadjust)
+				timeStr := strings.Join([]string{match[1], cfg.Timeadjust}, " ")
 				timeStr = strings.Replace(timeStr, "  ", " ", -1)
 				timeParsed, e = time.Parse(timeLayout, timeStr)
 				if e != nil {

@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"strconv"
 	"text/template"
 	"io/ioutil"
 	"time"
@@ -122,7 +123,7 @@ func ProcessSearchLog(w http.ResponseWriter, r *http.Request) {
 		keyword := r.FormValue("keyword")
 		c := SearchLog(keyword, &output)
 		t := template.Must(template.New("webgui").Parse(tString))
-		e := t.Execute(w, map[string]string{"count": fmt.Sprintf("%d", c), "output": output.String()})
+		e := t.Execute(w, map[string]string{"count": strconv.FormatInt(int64(c), 10), "output": output.String()})
 		if e != nil {
 			fmt.Printf("%v\n", e)
 		}

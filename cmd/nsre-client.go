@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"strings"
 	"fmt"
     "io/ioutil"
     "net/http"
@@ -15,7 +16,7 @@ func RunCommand(cmdName string) {
         fmt.Println("Failed to generate token")
     }
     client := &http.Client{}
-    req, _ := http.NewRequest("GET", fmt.Sprintf("%s/run/%s", Config.Serverurl, cmdName), nil)
+    req, _ := http.NewRequest("GET", strings.Join([]string{Config.Serverurl, "run", cmdName}, "/"), nil)
     req.Header.Set("Token", validToken)
     res, err := client.Do(req)
     if err != nil {
@@ -46,4 +47,3 @@ func GenerateJWT() (string, error) {
 
     return tokenString, nil
 }
-
