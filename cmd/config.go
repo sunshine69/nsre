@@ -59,7 +59,7 @@ logfiles:
       paths:
         - /var/log/syslog
       timelayout: "Jan 02 15:04:05 2006 MST"
-      timepattern: '^([a-zA-Z]{3,3} [\d]{0,2} [\d]{2,2}\:[\d]{2,2}\:[\d]{2,2}) '
+      timepattern: '^([a-zA-Z]{3,3}[\s]+[\d]{0,2}[\s]+[\d]{2,2}\:[\d]{2,2}\:[\d]{2,2}) '
       timeadjust: "2019 AEST"
       pattern: '([^\s]+) ([^\s]+) (.*)$'
       multilineptn: '([^\s]+.*)$'

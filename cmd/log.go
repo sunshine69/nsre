@@ -34,9 +34,8 @@ func TailLog(cfg *TailLogConfig, wg *sync.WaitGroup){
 	// offset − This is the position of the read/write pointer within the file.
 	// whence − This is optional and defaults to 0 which means absolute file positioning, other values are 1 which means seek relative to the current position and 2 means seek relative to the file's end.
 
-	previousPos := LoadTailPosition(cfg)
-	seek := &tail.SeekInfo{Offset: previousPos, Whence: 0}
-	cfg.TailConfig.Location = seek
+	// seek := &tail.SeekInfo{Offset: 0, Whence: 0}
+	// cfg.TailConfig.Location = seek
 
 	for _, logFile := range(cfg.Paths) {
 		log.Printf("Start tailing %s\n", logFile)
@@ -44,6 +43,10 @@ func TailLog(cfg *TailLogConfig, wg *sync.WaitGroup){
 		if e != nil {
 			log.Fatalf("Can not tail file - %v\n", e)
 		}
+
+		previousPos := LoadTailPosition(t, cfg)
+		seek := &tail.SeekInfo{Offset: previousPos, Whence: 0}
+		cfg.TailConfig.Location = seek
 
 		if cfg.TailConfig.Follow {
 			c := make(chan os.Signal, 4)
@@ -71,7 +74,7 @@ func SaveTailPosition(t *tail.Tail, cfg *TailLogConfig) {
 	if e != nil {
 		log.Printf("Can not tell from tail where are we - %v\n", e)
 	} else {
-		filename := filepath.Join(os.Getenv("HOME"), "taillog-" + cfg.Name + filepath.Base(t.Filename))
+		filename := filepath.Join(os.Getenv("HOME"), "taillog-" + cfg.Name + "-" + filepath.Base(t.Filename))
 		_pos := strconv.FormatInt(pos, 10)
 		if e = ioutil.WriteFile(filename, []byte(_pos), 0750); e != nil {
 			log.Printf("ERROR Can not save pos to %s - %v\n",filename ,e)
@@ -80,8 +83,8 @@ func SaveTailPosition(t *tail.Tail, cfg *TailLogConfig) {
 }
 
 //LoadTailPosition -
-func LoadTailPosition(cfg *TailLogConfig) (int64) {
-	filename := filepath.Join(os.Getenv("HOME"), "taillog-" + cfg.Name)
+func LoadTailPosition(t *tail.Tail, cfg *TailLogConfig) (int64) {
+	filename := filepath.Join(os.Getenv("HOME"), "taillog-" + cfg.Name + "-" + filepath.Base(t.Filename))
 	data, e := ioutil.ReadFile(filename)
 	if e != nil {
 		log.Printf("ERROR Can not read previous pos. Will set seek to 0 - %s\n", e)
@@ -115,14 +118,18 @@ func IsEOF(filename string, seek int64) (bool) {
 	return false
 }
 
+func filterPassword(text string, passPtn *regexp.Regexp) (string) {
+	return passPtn.ReplaceAllLiteralString(text, "SENSITIVE_DATA_FILTERED")
+}
+
 //SendLine -
-func SendLine(timeParsed time.Time, hostStr, appNameStr, msgStr string) {
+func SendLine(timeParsed time.Time, hostStr, appNameStr, msgStr string, passPtn *regexp.Regexp) {
 	logData := LogData{
 		Timestamp: time.Now().UnixNano(),
 		Datelog: timeParsed.UnixNano(),
 		Host: hostStr,
 		Application: appNameStr,
-		Message: msgStr,
+		Message: filterPassword(msgStr, passPtn),
 	}
 	var json = jsoniter.ConfigCompatibleWithStandardLibrary
 	output, e := json.Marshal(&logData)
@@ -155,6 +162,7 @@ func ProcessTailLines(cfg *TailLogConfig, tail *tail.Tail) {
 	linePtnStr := strings.Join([]string{cfg.Timepattern, cfg.Pattern}, "" )
 	linePtn = regexp.MustCompile(linePtnStr)
 	multiLinePtn = regexp.MustCompile(cfg.Multilineptn)
+	passPtn := regexp.MustCompile(`([Pp]assword|[Pp]assphrase)['"]*[\:\=][\s\n]*[^\s]+[\s]`)
 
 	if cfg.Timepattern != "" {
 		timePtn = regexp.MustCompile(cfg.Timepattern)
@@ -182,7 +190,7 @@ func ProcessTailLines(cfg *TailLogConfig, tail *tail.Tail) {
 			msgStr := strings.Join(lineStack, "\n")
 			lineStack = lineStack[:0]
 			// log.Printf("EOF reached. Flush stack\n")
-			SendLine(timeParsed, hostStr, appNameStr, msgStr)
+			SendLine(timeParsed, hostStr, appNameStr, msgStr, passPtn)
 		}
 
 		match := []string{"notimeptn"}
@@ -195,11 +203,11 @@ func ProcessTailLines(cfg *TailLogConfig, tail *tail.Tail) {
 			if len(lineStack) > 0 {//Flush the multiline stack
 				msgStr := strings.Join(lineStack, "\n")
 				lineStack = lineStack[:0]
-				SendLine(timeParsed, hostStr, appNameStr, msgStr)
+				SendLine(timeParsed, hostStr, appNameStr, msgStr, passPtn)
 			}
 			if match[0] != "notimeptn" {
 				timeStr := strings.Join([]string{match[1], cfg.Timeadjust}, " ")
-				timeStr = strings.Replace(timeStr, "  ", " ", -1)
+				timeStr = strings.Replace(timeStr, "  ", " 0", -1)
 				timeParsed, e = time.Parse(timeLayout, timeStr)
 				if e != nil {
 					log.Fatalf("ERROR Fail to parse time %v\n", e)
@@ -249,7 +257,7 @@ func ProcessTailLines(cfg *TailLogConfig, tail *tail.Tail) {
 				}
 			} else {
 				log.Printf("Can not parse time pattern\n")
-				fmt.Printf("Line Text: '%s'\n", line.Text)
+				fmt.Printf("Line Text: '%s'\nPattern: %s\n", line.Text, cfg.Timepattern)
 			}
 		}
 	}
