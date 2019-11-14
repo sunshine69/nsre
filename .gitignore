@@ -27,3 +27,4 @@ gnote
 syslog*
 nsre*
 *.orig
+*.log

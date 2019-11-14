@@ -162,7 +162,7 @@ func ProcessTailLines(cfg *TailLogConfig, tail *tail.Tail) {
 	linePtnStr := strings.Join([]string{cfg.Timepattern, cfg.Pattern}, "" )
 	linePtn = regexp.MustCompile(linePtnStr)
 	multiLinePtn = regexp.MustCompile(cfg.Multilineptn)
-	passPtn := regexp.MustCompile(`([Pp]assword|[Pp]assphrase)['"]*[\:\=]*[\s\n]*[^\s]+[\s]`)
+	passPtn := regexp.MustCompile(Config.PasswordFilterPattern)
 
 	if cfg.Timepattern != "" {
 		timePtn = regexp.MustCompile(cfg.Timepattern)

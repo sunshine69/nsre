@@ -32,6 +32,7 @@ type AppConfig struct { //Why do I have to tag every field! Because yaml driver 
     Logdbpath string
     Sslcert string
     Sslkey string
+    PasswordFilterPattern string `yaml:"passwordfilterpattern"`
 }
 
 //Config - Global
@@ -66,6 +67,7 @@ logfiles:
       appname: ""
 sslcert: "%s"
 sslkey: "%s"
+passwordfilterpattern: ([Pp]assword|[Pp]assphrase)['"]*[\:\=]*[\s\n]*[^\s]+[\s]
 `
 tailSimpleConfig := `
 port: 8000
@@ -89,6 +91,7 @@ logfiles:
       appname: '%s'
 sslcert: ""
 sslkey: ""
+passwordfilterpattern: ([Pp]assword|[Pp]assphrase)['\\"]*[\:\=]*[\s\n]*[^\s]+[\s]
 `
     var fPath, configContent, serverurl, jwtkey, logfile, appname, sslcert, sslkey string
     configContent = defaultConfig

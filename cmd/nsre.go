@@ -97,8 +97,8 @@ func ProcessSearchLog(w http.ResponseWriter, r *http.Request) {
         <table>
             <tr>
                 <td><label for="keyword">Keyword: </label></td>
-				<td><input name="keyword" id="keyword" type="text" value=""/></td>
-				<td><input type="checkbox" name="sortorder" value="DESC" {{.sortorder}}>Sort Descending</td>
+				<td><input name="keyword" id="keyword" type="text" value="{{ .keyword }}"/></td>
+				<td><input type="checkbox" name="sortorder" value="DESC" {{ .sortorder }}>Sort Descending</td>
             </tr>
             <tr>
                 <td colspan="2" align="center"><input name="submit" type="submit" value="submit" /></td>
@@ -117,6 +117,7 @@ func ProcessSearchLog(w http.ResponseWriter, r *http.Request) {
 		t := template.Must(template.New("webgui").Parse(tString))
 		e := t.Execute(w, map[string]string{
 			"sortorder": "checked",
+			"keyword": "",
 			})
 		if e != nil {
 			fmt.Printf("%v\n", e)
@@ -140,6 +141,7 @@ func ProcessSearchLog(w http.ResponseWriter, r *http.Request) {
 			"count": strconv.FormatInt(int64(c), 10),
 			"output": output.String(),
 			"sortorder": checkedSort,
+			"keyword": keyword,
 			})
 		if e != nil {
 			fmt.Printf("%v\n", e)
