@@ -1,6 +1,7 @@
 package main
 
 import (
+	"time"
 	"path/filepath"
 	"github.com/hpcloud/tail"
 	"sync"
@@ -36,6 +37,8 @@ func main() {
 	serverURL := flag.String("url", "", "Server uri to post log to in tailSimple mode")
 	appName := flag.String("appname", "", "Application name in tailSimple mode")
 	jwtkey := flag.String("jwtkey", "", "JWT API Key to talk to server")
+	sslcert := flag.String("cert", "", "SSL certificate path")
+	sslkey := flag.String("key", "", "SSL key path")
 
 	flag.Parse()
 
@@ -49,6 +52,8 @@ func main() {
 				"jwtkey", *jwtkey,
 				"logfile", *tailFile,
 				"appname", *appName,
+				"sslcert", *sslcert,
+				"sslkey", *sslkey,
 			); e != nil {
 			log.Fatalf("ERROR can not generate config file %v\n", e)
 		}
@@ -63,7 +68,7 @@ func main() {
 		Follow:      *tailFollow,
 		MaxLineSize: 0,
 	}
-	
+
 	switch *mode {
 	case "server":
 		cmd.StartServer()
@@ -73,6 +78,7 @@ func main() {
 		startTailServer(tailCfg)
 	case "tailserver":
 		go cmd.StartServer()
+		time.Sleep(2 * time.Second)
 		startTailServer(tailCfg)
 	case "reset", "setup":
 		files, _ := filepath.Glob(filepath.Join(os.Getenv("HOME"), "taillog*"))

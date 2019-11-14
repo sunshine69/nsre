@@ -30,6 +30,8 @@ type AppConfig struct { //Why do I have to tag every field! Because yaml driver 
     Logfiles []LogFile
     Serverurl string
     Logdbpath string
+    Sslcert string
+    Sslkey string
 }
 
 //Config - Global
@@ -62,6 +64,8 @@ logfiles:
       pattern: '([^\s]+) ([^\s]+) (.*)$'
       multilineptn: '([^\s]+.*)$'
       appname: ""
+sslcert: "%s"
+sslkey: "%s"
 `
 tailSimpleConfig := `
 port: 8000
@@ -83,8 +87,10 @@ logfiles:
       pattern: '^([^\s]+.*)$'
       multilineptn: '^[\s]+([^\s]+.*)$'
       appname: '%s'
+sslcert: ""
+sslkey: ""
 `
-    var fPath, configContent, serverurl, jwtkey, logfile, appname string
+    var fPath, configContent, serverurl, jwtkey, logfile, appname, sslcert, sslkey string
     configContent = defaultConfig
 
     for i, v := range(opt) {
@@ -101,13 +107,17 @@ logfiles:
                 logfile = opt[i+1].(string)
             case "appname":
                 appname = opt[i+1].(string)
+            case "sslcert":
+                sslcert = opt[i+1].(string)
+            case "sslkey":
+                sslkey = opt[i+1].(string)
             }
         }
     }
     if logfile != "" {
         configContent = fmt.Sprintf(tailSimpleConfig, serverurl, jwtkey, logfile, appname)
     } else {
-        configContent = defaultConfig
+        configContent =  fmt.Sprintf(defaultConfig, sslcert, sslkey)
     }
     err := ioutil.WriteFile(fPath, []byte(configContent), 0600)
     if err != nil {return err}

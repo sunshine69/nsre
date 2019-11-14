@@ -198,8 +198,13 @@ func HandleRequests() {
 	router.Handle("/run/{CommandName}", isAuthorized(ProcessCommand)).Methods("GET")
 	router.Handle("/log", isAuthorized(ProcessLog)).Methods("POST")
 	router.HandleFunc("/searchlog", ProcessSearchLog)
-	log.Printf("Start server on port %d\n", Config.Port)
-    log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", Config.Port), router))
+	if Config.Sslkey != "" {
+		log.Fatal(http.ListenAndServeTLS(fmt.Sprintf(":%d", Config.Port), Config.Sslcert, Config.Sslkey, router))
+	} else {
+		log.Printf("Start server on port %d\n", Config.Port)
+		log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", Config.Port), router))
+	}
+
 }
 //StartServer - We may spawn other listener within this func
 func StartServer() {
