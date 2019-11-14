@@ -43,19 +43,24 @@ func TailLog(cfg *TailLogConfig, wg *sync.WaitGroup){
 		if e != nil {
 			log.Fatalf("Can not tail file - %v\n", e)
 		}
-		c := make(chan os.Signal, 4)
-		signal.Notify(c,
-			syscall.SIGHUP,
-			syscall.SIGINT,
-			syscall.SIGTERM,
-			syscall.SIGQUIT)
 
-		go ProcessTailLines(cfg, t)
-		s := <-c
-		log.Printf("%s captured. Do cleaning up\n", s.String())
-		SaveTailPosition(t, cfg)
-		t.Stop()
-		wg.Done()
+		if cfg.TailConfig.Follow {
+			c := make(chan os.Signal, 4)
+			signal.Notify(c,
+				syscall.SIGHUP,
+				syscall.SIGINT,
+				syscall.SIGTERM,
+				syscall.SIGQUIT)
+			go ProcessTailLines(cfg, t)
+			s := <-c
+			log.Printf("%s captured. Do cleaning up\n", s.String())
+			SaveTailPosition(t, cfg)
+			t.Stop()
+			wg.Done()
+		} else {
+			ProcessTailLines(cfg, t)
+			wg.Done()
+		}
 	}
 }
 
@@ -103,7 +108,7 @@ func IsEOF(filename string, seek int64) (bool) {
 	fh.Seek(seek, 0)
 	_, e = fh.Read(buff)
 	if e == io.EOF {
-		fmt.Printf("ERROR\n")
+		// fmt.Printf("EOF reached\n")
 		return true
 	}
 	return false
@@ -145,17 +150,27 @@ func SendLine(timeParsed time.Time, hostStr, appNameStr, msgStr string) {
 //ProcessTailLines -
 func ProcessTailLines(cfg *TailLogConfig, tail *tail.Tail) {
 	tailLines := tail.Lines
-	timePtn := regexp.MustCompile(cfg.Timepattern)
+	var timePtn, linePtn, multiLinePtn *regexp.Regexp
 	linePtnStr := fmt.Sprintf("%s%s", cfg.Timepattern, cfg.Pattern)
-	linePtn := regexp.MustCompile(linePtnStr)
-	multiLinePtn := regexp.MustCompile(cfg.Multilineptn)
-	log.Printf("time ptn: '%s'\nline ptn: '%s'\n", cfg.Timepattern, linePtnStr)
+	linePtn = regexp.MustCompile(linePtnStr)
+	multiLinePtn = regexp.MustCompile(cfg.Multilineptn)
+
+	if cfg.Timepattern != "" {
+		timePtn = regexp.MustCompile(cfg.Timepattern)
+		log.Printf("time ptn: '%s'\nline ptn: '%s'\n", cfg.Timepattern, linePtnStr)
+	}
 
 	timeLayout := cfg.Timelayout
 
 	var timeParsed time.Time
 	var e error
 	var hostStr, appNameStr string
+
+	if cfg.Appname != "" {
+		appNameStr = cfg.Appname
+	} else {
+		appNameStr = "-"
+	}
 
 	lineStack := []string{}
 	beginLineMatch := false
@@ -168,7 +183,12 @@ func ProcessTailLines(cfg *TailLogConfig, tail *tail.Tail) {
 			// log.Printf("EOF reached. Flush stack\n")
 			SendLine(timeParsed, hostStr, appNameStr, msgStr)
 		}
-		match := timePtn.FindStringSubmatch(line.Text)
+
+		match := []string{"notimeptn"}
+		if timePtn != nil {
+			match = timePtn.FindStringSubmatch(line.Text)
+		}
+
 		if len(match) > 0 {
 			beginLineMatch = true
 			if len(lineStack) > 0 {//Flush the multiline stack
@@ -176,22 +196,34 @@ func ProcessTailLines(cfg *TailLogConfig, tail *tail.Tail) {
 				lineStack = lineStack[:0]
 				SendLine(timeParsed, hostStr, appNameStr, msgStr)
 			}
-			timeStr := fmt.Sprintf("%s %s", match[1], cfg.Timeadjust)
-			timeStr = strings.Replace(timeStr, "  ", " ", -1)
-			timeParsed, e = time.Parse(timeLayout, timeStr)
-			if e != nil {
-				log.Fatalf("ERROR Fail to parse time %v\n", e)
+			if match[0] != "notimeptn" {
+				timeStr := fmt.Sprintf("%s %s", match[1], cfg.Timeadjust)
+				timeStr = strings.Replace(timeStr, "  ", " ", -1)
+				timeParsed, e = time.Parse(timeLayout, timeStr)
+				if e != nil {
+					log.Fatalf("ERROR Fail to parse time %v\n", e)
+				}
+			} else {
+				timeParsed = time.Now()
 			}
+
 			match1 := linePtn.FindStringSubmatch(line.Text)
 			matchCount := len(match1)
 			if matchCount > 0 {
 				var msgStr string
 				switch matchCount {
-				case 3:
+				case 2: //no timePtn
 					curHostname, _ := os.Hostname()
-					hostStr, appNameStr, msgStr = curHostname, "-", match1[2]
+					hostStr, msgStr = curHostname, match1[1]
+				case 3://For simple type we only support up to two matches, to parse the
+					if match[0] == "notimeptn" {
+						hostStr, msgStr = match1[1], match1[2]
+					} else {
+						curHostname, _ := os.Hostname()
+						hostStr, msgStr = curHostname, match1[2]
+					}
 				case 4:
-					hostStr, appNameStr, msgStr = match1[2], "-", match1[3]
+					hostStr, msgStr = match1[2], match1[3]
 				case 5:
 					hostStr, appNameStr, msgStr = match1[2], match1[3], match1[4]
 				}
@@ -199,7 +231,7 @@ func ProcessTailLines(cfg *TailLogConfig, tail *tail.Tail) {
 					lineStack = append(lineStack, msgStr)
 				}
 			} else {
-				log.Fatalf("The pattern does not parse correct components. You need to have capture groups - TIMESTAMP HOSTNAME APP-NAME MSG\n")
+				log.Fatalf("The pattern does not parse correct components. You need to have capture groups - TIMESTAMP HOSTNAME APP-NAME MSG\nLinePtn: '%s'\nLine Text: '%s'\n", linePtnStr, line.Text)
 			}
 		} else {
 			if beginLineMatch {

@@ -31,7 +31,28 @@ func main() {
 	mode := flag.String("m", "client", "run mode. Can be server|client|tail|tailserver|reset.\nserver - start nsca server and wait for command.\nclient - take another option -cmd which is the command to send to the server.\ntail - tail the log and send to the log server.\nreset - reset the config using default")
 	cmdName := flag.String("cmd", "", "Command name")
 	tailFollow := flag.Bool("tailf", false, "Tail mode follow")
+
+	tailFile := flag.String("f", "", "File to parse in tailSimple mode.\nIt will take a file and parse by lines. There is no time parser. Need another option -appname to insert the application name, and -f <file to parse>; -url <log store url>.\nThis will ignore all config together.")
+	serverURL := flag.String("url", "", "Server uri to post log to in tailSimple mode")
+	appName := flag.String("appname", "", "Application name in tailSimple mode")
+	jwtkey := flag.String("jwtkey", "", "JWT API Key to talk to server")
+
 	flag.Parse()
+
+	e := cmd.LoadConfig(*configFile)
+
+	if e != nil {
+		log.Printf("Error reading config file. %v\nGenerating new one\n", e)
+		if e = cmd.GenerateDefaultConfig(
+				"file", *configFile,
+				"serverurl", *serverURL,
+				"jwtkey", *jwtkey,
+				"logfile", *tailFile,
+				"appname", *appName,
+			); e != nil {
+			log.Fatalf("ERROR can not generate config file %v\n", e)
+		}
+	}
 
 	tailCfg := tail.Config{
 		// Location:    seek,
@@ -42,14 +63,7 @@ func main() {
 		Follow:      *tailFollow,
 		MaxLineSize: 0,
 	}
-
-	e := cmd.LoadConfig(*configFile)
-	if e != nil {
-		log.Printf("Error reading config file. %v\nGenerating new one\n", e)
-		if e = cmd.GenerateDefaultConfig(*configFile); e != nil {
-			log.Fatalf("ERROR can not geenrate config file %v\n", e)
-		}
-	}
+	
 	switch *mode {
 	case "server":
 		cmd.StartServer()
@@ -65,6 +79,13 @@ func main() {
 		for _, f := range(files) {
 			os.Remove(f)
 		}
-		cmd.GenerateDefaultConfig(*configFile)
+		log.Printf("Going to generate config...")
+		cmd.GenerateDefaultConfig(
+			"file", *configFile,
+			"serverurl", *serverURL,
+			"jwtkey", *jwtkey,
+			"logfile", *tailFile,
+			"appname", *appName,
+		)
 	}
 }

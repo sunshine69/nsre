@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"fmt"
     "io/ioutil"
     "gopkg.in/yaml.v2"
 )
@@ -19,6 +20,7 @@ type LogFile struct {
 	Timeadjust string //If the time extracted string miss some info (like year or zone etc) this string will be appended to the string
     Pattern string //will be matched to extract the HOSTNAME APP-NAME MSG part of the line.
     Multilineptn string //detect if the line is part of the previous line
+    Appname string //Overrite the appname of the logfile if not empty
 }
 //AppConfig -
 type AppConfig struct { //Why do I have to tag every field! Because yaml driver automatically lowercase the field name to look into the yaml file <yuk>
@@ -39,7 +41,7 @@ const (
 )
 
 //GenerateDefaultConfig -
-func GenerateDefaultConfig(fPath string) (e error) {
+func GenerateDefaultConfig(opt ...interface{}) (e error) {
     defaultConfig := `
 port: 8000
 # Used in client mode to send to the server
@@ -59,8 +61,55 @@ logfiles:
       timeadjust: "2019 AEST"
       pattern: '([^\s]+) ([^\s]+) (.*)$'
       multilineptn: '([^\s]+.*)$'
+      appname: ""
 `
-    err := ioutil.WriteFile(fPath, []byte(defaultConfig), 0600)
+tailSimpleConfig := `
+port: 8000
+# Used in client mode to send to the server
+serverurl: %s
+jwtkey: %s
+logdbpath: logs.db
+# commands list to allow remote execution.
+commands:
+    - name: example_ls
+      path: /bin/ls
+logfiles:
+    - name: SimpleFileParser
+      paths:
+        - %s
+      timelayout: "Jan 02 15:04:05 2006 MST"
+      timepattern: ''
+      timeadjust: ""
+      pattern: '^([^\s]+.*)$'
+      multilineptn: '^[\s]+([^\s]+.*)$'
+      appname: '%s'
+`
+    var fPath, configContent, serverurl, jwtkey, logfile, appname string
+    configContent = defaultConfig
+
+    for i, v := range(opt) {
+        if i % 2 == 0 {
+            key := v.(string)
+            switch key {
+            case "file":
+                fPath = opt[i+1].(string)
+            case "serverurl":
+                serverurl = opt[i+1].(string)
+            case "jwtkey":
+                jwtkey = opt[i+1].(string)
+            case "logfile":
+                logfile = opt[i+1].(string)
+            case "appname":
+                appname = opt[i+1].(string)
+            }
+        }
+    }
+    if logfile != "" {
+        configContent = fmt.Sprintf(tailSimpleConfig, serverurl, jwtkey, logfile, appname)
+    } else {
+        configContent = defaultConfig
+    }
+    err := ioutil.WriteFile(fPath, []byte(configContent), 0600)
     if err != nil {return err}
     return LoadConfig(fPath)
 }
