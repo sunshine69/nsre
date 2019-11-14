@@ -183,7 +183,7 @@ func SearchLog(keyword string, o *strings.Builder) (int) {
 			<td>%s</td>
 			<td>%s</td>
 			<td>%s</td>
-		</tr>`, timestamp.Format(AUTimeLayout), datelog.Format(AUTimeLayout), host, application, msg)
+		</tr>`, timestamp.Format(AUTimeLayout), datelog.Format(AUTimeLayout), template.HTMLEscapeString(host), template.HTMLEscapeString(application), template.HTMLEscapeString(msg))
 		fmt.Fprintf(o, line)
 		count = count + 1
 	}
