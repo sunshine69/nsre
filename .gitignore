@@ -26,4 +26,4 @@ gnote
 .vscode
 syslog*
 nsre*
-
+*.orig
