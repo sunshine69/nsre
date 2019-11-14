@@ -119,7 +119,7 @@ func IsEOF(filename string, seek int64) (bool) {
 }
 
 func filterPassword(text string, passPtn *regexp.Regexp) (string) {
-	return passPtn.ReplaceAllLiteralString(text, "SENSITIVE_DATA_FILTERED")
+	return passPtn.ReplaceAllString(text, "$1 SENSITIVE_DATA_FILTERED ")
 }
 
 //SendLine -
@@ -162,7 +162,7 @@ func ProcessTailLines(cfg *TailLogConfig, tail *tail.Tail) {
 	linePtnStr := strings.Join([]string{cfg.Timepattern, cfg.Pattern}, "" )
 	linePtn = regexp.MustCompile(linePtnStr)
 	multiLinePtn = regexp.MustCompile(cfg.Multilineptn)
-	passPtn := regexp.MustCompile(`([Pp]assword|[Pp]assphrase)['"]*[\:\=][\s\n]*[^\s]+[\s]`)
+	passPtn := regexp.MustCompile(`([Pp]assword|[Pp]assphrase)['"]*[\:\=]*[\s\n]*[^\s]+[\s]`)
 
 	if cfg.Timepattern != "" {
 		timePtn = regexp.MustCompile(cfg.Timepattern)
@@ -185,6 +185,8 @@ func ProcessTailLines(cfg *TailLogConfig, tail *tail.Tail) {
 	beginLineMatch := false
 
 	for line := range tailLines {
+		if line.Text == "" || line.Text == "\n" { continue }
+		// fmt.Printf("Processing LineText: '%s'\n", line.Text)
 		curSeek, _ := tail.Tell()
 		if IsEOF(tail.Filename, curSeek) {
 			msgStr := strings.Join(lineStack, "\n")
@@ -240,7 +242,7 @@ func ProcessTailLines(cfg *TailLogConfig, tail *tail.Tail) {
 					lineStack = append(lineStack, msgStr)
 				}
 			} else {
-				log.Fatalf("The pattern does not parse correct components. You need to have capture groups - TIMESTAMP HOSTNAME APP-NAME MSG\nLinePtn: '%s'\nLine Text: '%s'\n", linePtnStr, line.Text)
+				// log.Printf("The pattern does not parse correct components. You need to have capture groups - TIMESTAMP HOSTNAME APP-NAME MSG\nLinePtn: '%s'.\n", linePtnStr)
 			}
 		} else {
 			if beginLineMatch {

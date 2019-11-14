@@ -97,7 +97,8 @@ func ProcessSearchLog(w http.ResponseWriter, r *http.Request) {
         <table>
             <tr>
                 <td><label for="keyword">Keyword: </label></td>
-                <td><input name="keyword" id="keyword" type="text" value=""/></td>
+				<td><input name="keyword" id="keyword" type="text" value=""/></td>
+				<td><input type="checkbox" name="sortorder" value="DESC" {{.sortorder}}>Sort Descending</td>
             </tr>
             <tr>
                 <td colspan="2" align="center"><input name="submit" type="submit" value="submit" /></td>
@@ -114,16 +115,32 @@ func ProcessSearchLog(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case "GET":
 		t := template.Must(template.New("webgui").Parse(tString))
-		e := t.Execute(w, output.String())
+		e := t.Execute(w, map[string]string{
+			"sortorder": "checked",
+			})
 		if e != nil {
 			fmt.Printf("%v\n", e)
 		}
 
 	case "POST":
+		r.ParseForm()
 		keyword := r.FormValue("keyword")
-		c := SearchLog(keyword, &output)
+		sortorder := r.Form["sortorder"]
+		var sortorderVal, checkedSort string
+		if len(sortorder) == 0 {
+			sortorderVal = "ASC"
+			checkedSort = ""
+		} else {
+			sortorderVal = "DESC"
+			checkedSort = "checked"
+		}
+		c := SearchLog(keyword, &output, sortorderVal)
 		t := template.Must(template.New("webgui").Parse(tString))
-		e := t.Execute(w, map[string]string{"count": strconv.FormatInt(int64(c), 10), "output": output.String()})
+		e := t.Execute(w, map[string]string{
+			"count": strconv.FormatInt(int64(c), 10),
+			"output": output.String(),
+			"sortorder": checkedSort,
+			})
 		if e != nil {
 			fmt.Printf("%v\n", e)
 		}
@@ -131,7 +148,7 @@ func ProcessSearchLog(w http.ResponseWriter, r *http.Request) {
 }
 
 //SearchLog -
-func SearchLog(keyword string, o *strings.Builder) (int) {
+func SearchLog(keyword string, o *strings.Builder, sortorder string) (int) {
 	q := ""
 	keyword = strings.TrimSpace(keyword)
 	tokens := strings.Split(keyword, " & ")
@@ -139,7 +156,7 @@ func SearchLog(keyword string, o *strings.Builder) (int) {
 
 	for i, t := range(tokens) {
 		if i == _l - 1 {
-			q = fmt.Sprintf("%s (host LIKE '%%%s%%' OR application LIKE '%%%s%%' OR message LIKE '%%%s%%') ORDER BY timestamp DESC LIMIT 200;", q, t, t, t)
+			q = fmt.Sprintf("%s (host LIKE '%%%s%%' OR application LIKE '%%%s%%' OR message LIKE '%%%s%%') ORDER BY timestamp %s LIMIT 200;", q, t, t, t, sortorder)
 		} else {
 			q = fmt.Sprintf("%s (host LIKE '%%%s%%' OR application LIKE '%%%s%%' OR message LIKE '%%%s%%') AND ", q, t, t, t)
 		}
