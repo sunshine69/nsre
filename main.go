@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"log"
 	"flag"
-	"./cmd"
+	"github.com/sunshine69/nsre/cmd"
 )
 
 func startTailServer(tailCfg tail.Config) {
