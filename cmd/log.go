@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"crypto/tls"
 	"strconv"
 	"path/filepath"
 	"io"
@@ -137,6 +138,7 @@ func SendLine(timeParsed time.Time, hostStr, appNameStr, msgStr string, passPtn 
 		log.Fatalf("ERROR - can not marshal json to output - %v\n", e)
 	}
 	client := &http.Client{}
+	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
     validToken, err := GenerateJWT()
     if err != nil {
         fmt.Println("Failed to generate token")
