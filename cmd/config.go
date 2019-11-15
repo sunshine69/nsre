@@ -1,7 +1,8 @@
 package cmd
 
 import (
-	"fmt"
+	"strings"
+	"log"
     "io/ioutil"
     "gopkg.in/yaml.v2"
 )
@@ -45,56 +46,37 @@ const (
 
 //GenerateDefaultConfig -
 func GenerateDefaultConfig(opt ...interface{}) (e error) {
-    defaultConfig := `
-port: 8000
-# Used in client mode to send to the server
-serverurl: http://localhost:8000
-jwtkey: ChangeThisKeyInYourSystem
-logdbpath: logs.db
-# commands list to allow remote execution.
-commands:
-    - name: example_ls
-      path: /bin/ls
-logfiles:
-    - name: syslog
-      paths:
-        - /var/log/syslog
-      timelayout: "Jan 02 15:04:05 2006 MST"
-      timepattern: '^([a-zA-Z]{3,3}[\s]+[\d]{0,2}[\s]+[\d]{2,2}\:[\d]{2,2}\:[\d]{2,2}) '
-      timeadjust: "2019 AEST"
-      pattern: '([^\s]+) ([^\s]+) (.*)$'
-      multilineptn: '([^\s]+.*)$'
-      appname: ""
-sslcert: "%s"
-sslkey: "%s"
-passwordfilterpattern: ([Pp]assword|[Pp]assphrase)['"]*[\:\=]*[\s\n]*[^\s]+[\s]
-`
-tailSimpleConfig := `
-port: 8000
-# Used in client mode to send to the server
-serverurl: %s
-jwtkey: %s
-logdbpath: logs.db
-# commands list to allow remote execution.
-commands:
-    - name: example_ls
-      path: /bin/ls
-logfiles:
-    - name: SimpleFileParser
-      paths:
-        - %s
-      timelayout: "Jan 02 15:04:05 2006 MST"
-      timepattern: ''
-      timeadjust: ""
-      pattern: '([^\s]+.*)$'
-      multilineptn: '^[\s]+([^\s]+.*)$'
-      appname: '%s'
-sslcert: ""
-sslkey: ""
-passwordfilterpattern: ([Pp]assword|[Pp]assphrase)['"]*[\:\=]*[\s\n]*[^\s]+[\s]
-`
-    var fPath, configContent, serverurl, jwtkey, logfile, appname, sslcert, sslkey string
-    configContent = defaultConfig
+    defaultConfig := AppConfig {
+        Port: 8000,
+        Serverurl: "http://localhost:8000",
+        JwtKey: "ChangeThisKeyInYourSystem",
+        Logdbpath: "logs.db",
+        Commands: []Command {
+            {
+                Name: "example_ls",
+                Path: "/bin/ls",
+            },
+        },
+        Logfiles: []LogFile{
+            {
+                Name: "syslog",
+                Paths: []string {
+                    "/var/log/syslog", "/var/log/authlog", "/var/log/kern.log",
+                },
+                Timelayout: "Jan 02 15:04:05 2006 MST",
+                Timepattern: `^([a-zA-Z]{3,3}[\s]+[\d]{0,2}[\s]+[\d]{2,2}\:[\d]{2,2}\:[\d]{2,2}) `,
+                Timeadjust: "2019 AEST",
+                Pattern: `([^\s]+) ([^\s]+) (.*)$`,
+                Multilineptn: `([^\s]+.*)$`,
+                Appname: "",
+            },
+        },
+        Sslcert: "",
+        Sslkey: "",
+        PasswordFilterPattern: `([Pp]assword|[Pp]assphrase)['"]*[\:\=]*[\s\n]*[^\s]+[\s]`,
+    }
+
+    var fPath, serverurl, jwtkey, logfile, appname, sslcert, sslkey string
 
     for i, v := range(opt) {
         if i % 2 == 0 {
@@ -117,12 +99,37 @@ passwordfilterpattern: ([Pp]assword|[Pp]assphrase)['"]*[\:\=]*[\s\n]*[^\s]+[\s]
             }
         }
     }
+
+    var data []byte
     if logfile != "" {
-        configContent = fmt.Sprintf(tailSimpleConfig, serverurl, jwtkey, logfile, appname)
+
+        logfiles := strings.Split(logfile, ",")
+        _Logfiles := []LogFile{
+            {
+                Name: "SimpleTailLog",
+                Paths: logfiles,
+                Timelayout: "Jan 02 15:04:05 2006 MST",
+                Timepattern: "",
+                Timeadjust: "",
+                Pattern: `([^\s]+.*)$`,
+                Multilineptn: `^[\s]+([^\s]+.*)$`,
+                Appname: appname,
+            },
+        }
+
+        defaultConfig.Logfiles = _Logfiles
+        defaultConfig.Serverurl = serverurl
+        defaultConfig.JwtKey = jwtkey
+
+        data, e = yaml.Marshal(defaultConfig)
+        if e != nil { log.Fatalf("ERROR can not dump default config yaml")}
+
     } else {
-        configContent =  fmt.Sprintf(defaultConfig, sslcert, sslkey)
+        defaultConfig.Sslcert, defaultConfig.Sslkey = sslcert, sslkey
+        data, e = yaml.Marshal(defaultConfig)
+        if e != nil { log.Fatalf("ERROR can not dump default config yaml")}
     }
-    err := ioutil.WriteFile(fPath, []byte(configContent), 0600)
+    err := ioutil.WriteFile(fPath, data, 0600)
     if err != nil {return err}
     return LoadConfig(fPath)
 }

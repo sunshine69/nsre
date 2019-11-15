@@ -25,14 +25,16 @@ func startTailServer(tailCfg tail.Config) {
 	wg.Wait()
 }
 
+
 func main() {
+
 	defaultConfig :=  filepath.Join(os.Getenv("HOME"), ".nsre.yaml")
 	configFile := flag.String("c", defaultConfig, "Config file, default %s"+ defaultConfig)
 	mode := flag.String("m", "client", "run mode. Can be server|client|tail|tailserver|reset.\nserver - start nsca server and wait for command.\nclient - take another option -cmd which is the command to send to the server.\ntail - tail the log and send to the log server.\nreset - reset the config using default")
 	cmdName := flag.String("cmd", "", "Command name")
 	tailFollow := flag.Bool("tailf", false, "Tail mode follow")
 
-	tailFile := flag.String("f", "", "File to parse in tailSimple mode.\nIt will take a file and parse by lines. There is no time parser. Need another option -appname to insert the application name, and -f <file to parse>; -url <log store url>.\nThis will ignore all config together.")
+	tailFile := flag.String("f", "", "Files (coma sep list if more than 1) to parse in tailSimple mode.\nIt will take a file and parse by lines. There is no time parser. Need another option -appname to insert the application name, and -f <file to parse>; -url <log store url>.\nThis will ignore all config together.")
 	serverURL := flag.String("url", "", "Server uri to post log to in tailSimple mode")
 	appName := flag.String("appname", "", "Application name in tailSimple mode")
 	jwtkey := flag.String("jwtkey", "", "JWT API Key to talk to server")
