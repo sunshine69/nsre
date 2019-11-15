@@ -27,7 +27,6 @@ func startTailServer(tailCfg tail.Config) {
 	wg.Wait()
 }
 
-
 func main() {
 
 	defaultConfig :=  filepath.Join(os.Getenv("HOME"), ".nsre.yaml")

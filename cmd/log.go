@@ -57,18 +57,19 @@ func TailOnePath(cfg *TailLogConfig, wg *sync.WaitGroup, logFile string) {
 		log.Printf("%s captured. Do cleaning up\n", s.String())
 		SaveTailPosition(t, cfg)
 		t.Stop()
-		wg.Done()
 	} else {
 		ProcessTailLines(cfg, t)
-		wg.Done()
 	}
+	wg.Done()
 }
 
 //TailLog -
 func TailLog(cfg *TailLogConfig, wg *sync.WaitGroup){
 	for _, logFile := range(cfg.Paths) {
+		wg.Add(1)
 		go TailOnePath(cfg, wg, logFile)
 	}
+	wg.Done()
 }
 
 //SaveTailPosition -
@@ -122,7 +123,7 @@ func IsEOF(filename string, seek int64) (bool) {
 }
 
 func filterPassword(text string, passPtn *regexp.Regexp) (string) {
-	return passPtn.ReplaceAllString(text, "$1 SENSITIVE_DATA_FILTERED ")
+	return passPtn.ReplaceAllString(text, "$1 DATA_FILTERED ")
 }
 
 //SendLine -
