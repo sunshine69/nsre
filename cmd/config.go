@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"os"
 	"strings"
 	"log"
     "io/ioutil"
@@ -102,8 +103,13 @@ func GenerateDefaultConfig(opt ...interface{}) (e error) {
 
     var data []byte
     if logfile != "" {
-
-        logfiles := strings.Split(logfile, ",")
+        var logfiles []string
+        _logfiles := strings.Split(logfile, ",")
+        for _, _f := range(_logfiles) {
+            if _, err := os.Stat(_f); os.IsNotExist(err) {
+                log.Printf("INFO - File %s does not exist. In SimpleTail mode we dont wait, Skipping\n", _f)
+            } else { logfiles = append(logfiles, _f) }
+        }
         _Logfiles := []LogFile{
             {
                 Name: "SimpleTailLog",

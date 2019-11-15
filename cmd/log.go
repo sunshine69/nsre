@@ -73,12 +73,12 @@ func TailLog(cfg *TailLogConfig, wg *sync.WaitGroup){
 func SaveTailPosition(t *tail.Tail, cfg *TailLogConfig) {
 	pos, e := t.Tell()
 	if e != nil {
-		log.Printf("Can not tell from tail where are we - %v\n", e)
+		log.Printf("WARN - Can not tell from tail where are we - %v\n", e)
 	} else {
 		filename := filepath.Join(os.Getenv("HOME"), "taillog-" + cfg.Name + "-" + filepath.Base(t.Filename))
 		_pos := strconv.FormatInt(pos, 10)
 		if e = ioutil.WriteFile(filename, []byte(_pos), 0750); e != nil {
-			log.Printf("ERROR Can not save pos to %s - %v\n",filename ,e)
+			log.Printf("WARN - Can not save pos to %s - %v\n",filename ,e)
 		}
 	}
 }
@@ -88,16 +88,16 @@ func LoadTailPosition(t *tail.Tail, cfg *TailLogConfig) (int64) {
 	filename := filepath.Join(os.Getenv("HOME"), "taillog-" + cfg.Name + "-" + filepath.Base(t.Filename))
 	data, e := ioutil.ReadFile(filename)
 	if e != nil {
-		log.Printf("ERROR Can not read previous pos. Will set seek to 0 - %s\n", e)
+		log.Printf("WARN - Can not read previous pos. Will set seek to 0 - %s\n", e)
 		// os.Remove(filename)
 		return 0
 	}
 	out, e := strconv.ParseInt(string(data), 10, 64)
 	if e != nil {
-		log.Printf("ERROR Can not parse int previous pos. Will set seek to 0 - %s\n", e)
+		log.Printf("WARN - Can not parse int previous pos. Will set seek to 0 - %s\n", e)
 		return 0
 	}
-	log.Printf("Loaded previous file pos %d from %s. To set from beginnng remove the file\n", out, filename)
+	log.Printf("INFO - Loaded previous file pos %d from %s. To set from beginnng remove the file\n", out, filename)
 	return out
 }
 
@@ -141,7 +141,7 @@ func SendLine(timeParsed time.Time, hostStr, appNameStr, msgStr string, passPtn 
 	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
     validToken, err := GenerateJWT()
     if err != nil {
-        fmt.Println("Failed to generate token")
+        fmt.Println("ERROR - Failed to generate token")
 	}
 	req, _ := http.NewRequest("POST", strings.Join([]string{Config.Serverurl, "log"}, "/"), bytes.NewBuffer(output))
 	req.Header.Set("Token", validToken)
@@ -149,7 +149,7 @@ func SendLine(timeParsed time.Time, hostStr, appNameStr, msgStr string, passPtn 
 
 	res, err := client.Do(req)
 	if err != nil {
-		fmt.Printf("Error: %v", err)
+		fmt.Printf("ERROR - %v", err)
 	}
 	_, err = ioutil.ReadAll(res.Body)
 	if err != nil {
