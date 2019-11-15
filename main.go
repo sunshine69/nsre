@@ -12,8 +12,10 @@ import (
 )
 
 func startTailServer(tailCfg tail.Config) {
+	if len(cmd.Config.Logfiles) == 0 { return }
 	var wg sync.WaitGroup
 	for _, _logFile := range(cmd.Config.Logfiles) {
+		if len(_logFile.Paths) == 0 { continue }
 		_tailLogConfig := cmd.TailLogConfig{
 			LogFile: _logFile,
 			TailConfig: tailCfg,
