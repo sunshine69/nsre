@@ -74,7 +74,7 @@ func GenerateDefaultConfig(opt ...interface{}) (e error) {
         },
         Sslcert: "",
         Sslkey: "",
-        PasswordFilterPattern: `([Pp]assword|[Pp]assphrase)['"]*[\:\=]*[\s\n]*[^\s]+[\s]`,
+        PasswordFilterPattern: `([Pp]assword|[Pp]assphrase)['"]*[\:\=]*[\s\n]*[^\s]+[\s;]`,
     }
 
     var fPath, serverurl, jwtkey, logfile, appname, sslcert, sslkey string

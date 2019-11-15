@@ -97,11 +97,14 @@ func ProcessSearchLog(w http.ResponseWriter, r *http.Request) {
         <table>
             <tr>
                 <td><label for="keyword">Keyword: </label></td>
-				<td><input name="keyword" id="keyword" type="text" value="{{ .keyword }}"/></td>
+				<td><input name="keyword" id="keyword" type="text" value="{{ .keyword }}" title="keyword to search, understand & to search with AND logic."/></td>
 				<td><input type="checkbox" name="sortorder" value="DESC" {{ .sortorder }}>Sort Descending</td>
             </tr>
             <tr>
-                <td colspan="2" align="center"><input name="submit" type="submit" value="submit" /></td>
+				<td colspan="2" align="center">
+					<input type="button" value="clear" onclick="document.getElementById('keyword').value = '';">&nbsp
+					<input name="submit" type="submit" value="submit">
+				</td>
             </tr>
     	</table>
 	</form>
