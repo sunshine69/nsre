@@ -30,42 +30,44 @@ type TailLogConfig struct {
 	TailConfig tail.Config
 }
 
-//TailLog -
-func TailLog(cfg *TailLogConfig, wg *sync.WaitGroup){
+//TailOnePath -
+func TailOnePath(cfg *TailLogConfig, wg *sync.WaitGroup, logFile string) {
+	log.Printf("Start tailing %s\n", logFile)
+	t, e := tail.TailFile(logFile, cfg.TailConfig)
+	if e != nil {
+		log.Fatalf("Can not tail file - %v\n", e)
+	}
 	// offset − This is the position of the read/write pointer within the file.
 	// whence − This is optional and defaults to 0 which means absolute file positioning, other values are 1 which means seek relative to the current position and 2 means seek relative to the file's end.
-
 	// seek := &tail.SeekInfo{Offset: 0, Whence: 0}
 	// cfg.TailConfig.Location = seek
+	previousPos := LoadTailPosition(t, cfg)
+	seek := &tail.SeekInfo{Offset: previousPos, Whence: 0}
+	cfg.TailConfig.Location = seek
 
+	if cfg.TailConfig.Follow {
+		c := make(chan os.Signal, 4)
+		signal.Notify(c,
+			syscall.SIGHUP,
+			syscall.SIGINT,
+			syscall.SIGTERM,
+			syscall.SIGQUIT)
+		go ProcessTailLines(cfg, t)
+		s := <-c
+		log.Printf("%s captured. Do cleaning up\n", s.String())
+		SaveTailPosition(t, cfg)
+		t.Stop()
+		wg.Done()
+	} else {
+		ProcessTailLines(cfg, t)
+		wg.Done()
+	}
+}
+
+//TailLog -
+func TailLog(cfg *TailLogConfig, wg *sync.WaitGroup){
 	for _, logFile := range(cfg.Paths) {
-		log.Printf("Start tailing %s\n", logFile)
-		t, e := tail.TailFile(logFile, cfg.TailConfig)
-		if e != nil {
-			log.Fatalf("Can not tail file - %v\n", e)
-		}
-
-		previousPos := LoadTailPosition(t, cfg)
-		seek := &tail.SeekInfo{Offset: previousPos, Whence: 0}
-		cfg.TailConfig.Location = seek
-
-		if cfg.TailConfig.Follow {
-			c := make(chan os.Signal, 4)
-			signal.Notify(c,
-				syscall.SIGHUP,
-				syscall.SIGINT,
-				syscall.SIGTERM,
-				syscall.SIGQUIT)
-			go ProcessTailLines(cfg, t)
-			s := <-c
-			log.Printf("%s captured. Do cleaning up\n", s.String())
-			SaveTailPosition(t, cfg)
-			t.Stop()
-			wg.Done()
-		} else {
-			ProcessTailLines(cfg, t)
-			wg.Done()
-		}
+		go TailOnePath(cfg, wg, logFile)
 	}
 }
 

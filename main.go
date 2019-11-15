@@ -60,7 +60,7 @@ func main() {
 	}
 
 	if e != nil {
-		log.Printf("Error reading config file. %v\nGenerating new one\n", e)
+		log.Printf("INFO Can not read config file. %v\nGenerating new one\n", e)
 		if generateDefaultConfig() != nil {
 			log.Fatalf("ERROR can not generate config file %v\n", e)
 		}
