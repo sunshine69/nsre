@@ -86,12 +86,12 @@ logfiles:
       timelayout: "Jan 02 15:04:05 2006 MST"
       timepattern: ''
       timeadjust: ""
-      pattern: '^([^\s]+.*)$'
+      pattern: '([^\s]+.*)$'
       multilineptn: '^[\s]+([^\s]+.*)$'
       appname: '%s'
 sslcert: ""
 sslkey: ""
-passwordfilterpattern: ([Pp]assword|[Pp]assphrase)['\\"]*[\:\=]*[\s\n]*[^\s]+[\s]
+passwordfilterpattern: ([Pp]assword|[Pp]assphrase)['"]*[\:\=]*[\s\n]*[^\s]+[\s]
 `
     var fPath, configContent, serverurl, jwtkey, logfile, appname, sslcert, sslkey string
     configContent = defaultConfig
