@@ -152,7 +152,7 @@ func SendLine(timeParsed time.Time, hostStr, appNameStr, msgStr string, passPtn 
 
 	res, err := client.Do(req)
 	if err != nil {
-		fmt.Printf("ERROR - %v", err)
+		fmt.Printf("ERROR - %v\n", err)
 	}
 	_, err = ioutil.ReadAll(res.Body)
 	if err != nil {
