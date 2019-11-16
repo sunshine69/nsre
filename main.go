@@ -80,6 +80,8 @@ func main() {
 		cmd.StartServer()
 	case "client":
 		cmd.RunCommand(*cmdName)
+	case "nagios":
+		cmd.RunNagiosCheckCommand(*cmdName)
 	case "tail":
 		startTailServer(tailCfg)
 	case "tailserver":

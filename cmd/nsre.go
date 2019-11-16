@@ -77,8 +77,11 @@ func ProcessCommand(w http.ResponseWriter, r *http.Request) {
 	for _, cmd := range(Commands) {
 		switch cmd.Name {
 		case CommandName:
-			ouput := runSystemCommand(cmd.Path)
-			w.Write([]byte(ouput))
+			output := runSystemCommand(cmd.Path)
+			w.Write([]byte(output))
+		default:
+			output := "2\nERROR - Command "+CommandName +" does not exists"
+			w.Write([]byte(output))
 		}
 	}
 }
