@@ -127,7 +127,8 @@ func filterPassword(text string, passPtn *regexp.Regexp) (string) {
 }
 
 //SendLine -
-func SendLine(timeParsed time.Time, hostStr, appNameStr, msgStr string, passPtn *regexp.Regexp) {
+func SendLine(timeParsed time.Time, hostStr, appNameStr, msgStr string, passPtn *regexp.Regexp) (bool) {
+	IsOK := true
 	logData := LogData{
 		Timestamp: time.Now().UnixNano(),
 		Datelog: timeParsed.UnixNano(),
@@ -138,13 +139,15 @@ func SendLine(timeParsed time.Time, hostStr, appNameStr, msgStr string, passPtn 
 	var json = jsoniter.ConfigCompatibleWithStandardLibrary
 	output, e := json.Marshal(&logData)
 	if e != nil {
-		log.Fatalf("ERROR - can not marshal json to output - %v\n", e)
+		log.Printf("ERROR - can not marshal json to output - %v\n", e)
+		IsOK = false
 	}
 	client := &http.Client{}
 	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
     validToken, err := GenerateJWT()
     if err != nil {
-        fmt.Println("ERROR - Failed to generate token")
+		log.Printf("ERROR - Failed to generate token - %v\n", err)
+		IsOK = false
 	}
 	req, _ := http.NewRequest("POST", strings.Join([]string{Config.Serverurl, "log"}, "/"), bytes.NewBuffer(output))
 	req.Header.Set("Token", validToken)
@@ -153,11 +156,18 @@ func SendLine(timeParsed time.Time, hostStr, appNameStr, msgStr string, passPtn 
 	res, err := client.Do(req)
 	if err != nil {
 		fmt.Printf("ERROR - %v\n", err)
+		IsOK = false
 	}
-	_, err = ioutil.ReadAll(res.Body)
-	if err != nil {
-		fmt.Println(err)
+	if IsOK {defer res.Body.Close()}
+
+	if IsOK {
+		_, err = ioutil.ReadAll(res.Body)
+		if err != nil {
+			fmt.Println(err)
+			IsOK = false
+		}
 	}
+	return IsOK
 }
 
 //ProcessTailLines -
@@ -197,7 +207,11 @@ func ProcessTailLines(cfg *TailLogConfig, tail *tail.Tail) {
 			msgStr := strings.Join(lineStack, "\n")
 			lineStack = lineStack[:0]
 			// log.Printf("EOF reached. Flush stack\n")
-			SendLine(timeParsed, hostStr, appNameStr, msgStr, passPtn)
+
+			for {
+				if SendLine(timeParsed, hostStr, appNameStr, msgStr, passPtn) { break }
+				time.Sleep(15 * time.Second)
+			}
 		}
 
 		match := []string{"notimeptn"}
@@ -210,7 +224,10 @@ func ProcessTailLines(cfg *TailLogConfig, tail *tail.Tail) {
 			if len(lineStack) > 0 {//Flush the multiline stack
 				msgStr := strings.Join(lineStack, "\n")
 				lineStack = lineStack[:0]
-				SendLine(timeParsed, hostStr, appNameStr, msgStr, passPtn)
+				for {
+					if SendLine(timeParsed, hostStr, appNameStr, msgStr, passPtn) {break}
+					time.Sleep(15 * time.Second)
+				}
 			}
 			if match[0] != "notimeptn" {
 				timeStr := strings.Join([]string{match[1], cfg.Timeadjust}, " ")
