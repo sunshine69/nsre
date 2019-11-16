@@ -170,6 +170,7 @@ func SearchLog(keyword string, o *strings.Builder, sortorder string) (int) {
 	fmt.Println(q)
 
 	conn, err := sqlite3.Open(Config.Logdbpath)
+	conn.BusyTimeout(5 * time.Second)
 	if err != nil {
 		log.Fatalf("ERROR - can not open log database file - %v\n", err)
 	}
@@ -275,6 +276,8 @@ type LogData struct {
 //InsertLog -
 func InsertLog(data []byte) {
 	conn, err := sqlite3.Open(Config.Logdbpath)
+	conn.BusyTimeout(5 * time.Second)
+
 	if err != nil {
 		log.Fatalf("ERROR - can not open log database file - %v\n", err)
 	}
