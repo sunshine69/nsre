@@ -60,7 +60,11 @@ func runSystemCommand(command string) (o string) {
 	} else {
 		cmd.Wait()
 		fmt.Fprintf(&output, "%d\n", cmd.ProcessState.ExitCode())
-		fmt.Fprintf(&output, "%s - %s", out.String(), errOut.String())
+		if cmd.ProcessState.ExitCode() != 0 {
+			fmt.Fprintf(&output, "%s - %s", out.String(), errOut.String())
+		} else {
+			fmt.Fprintf(&output, "%s", out.String())
+		}
 	}
 	return output.String()
 }
