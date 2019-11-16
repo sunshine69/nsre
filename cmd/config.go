@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"time"
+	"github.com/bvinc/go-sqlite-lite/sqlite3"
 	"os"
 	"strings"
 	"log"
@@ -32,6 +34,7 @@ type AppConfig struct { //Why do I have to tag every field! Because yaml driver 
     Logfiles []LogFile
     Serverurl string
     Logdbpath string
+    Dbtimeout string
     Sslcert string
     Sslkey string
     PasswordFilterPattern string `yaml:"passwordfilterpattern"`
@@ -45,6 +48,22 @@ const (
     TimeISO8601LayOut = "2006-01-02T15:04:05-0700"
 )
 
+//GetDBConn -
+func GetDBConn() (*sqlite3.Conn) {
+    conn, err := sqlite3.Open(Config.Logdbpath)
+	if err != nil {
+		log.Fatalf("ERROR - can not open log database file - %v\n", err)
+    }
+	_dur, err := time.ParseDuration(Config.Dbtimeout)
+	if err != nil {
+        log.Printf("WARN - can not parse Dbtimeout string. Set default to 15 sec - %v\n", err)
+        conn.BusyTimeout(15 * time.Second)
+	} else{
+		conn.BusyTimeout(_dur)
+    }
+    return conn
+}
+
 //GenerateDefaultConfig -
 func GenerateDefaultConfig(opt ...interface{}) (e error) {
     defaultConfig := AppConfig {
@@ -52,6 +71,7 @@ func GenerateDefaultConfig(opt ...interface{}) (e error) {
         Serverurl: "http://localhost:8000",
         JwtKey: "ChangeThisKeyInYourSystem",
         Logdbpath: "logs.db",
+        Dbtimeout: "45s",
         Commands: []Command {
             {
                 Name: "example_ls",

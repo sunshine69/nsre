@@ -4,7 +4,6 @@ import (
 	"strconv"
 	"text/template"
 	"io/ioutil"
-	"time"
 	"bytes"
 	"strings"
 	"os/exec"
@@ -13,7 +12,6 @@ import (
 	"net/http"
 	"github.com/gorilla/mux"
 	jwt "github.com/dgrijalva/jwt-go"
-	"github.com/bvinc/go-sqlite-lite/sqlite3"
 	"github.com/json-iterator/go"
 )
 
@@ -169,11 +167,7 @@ func SearchLog(keyword string, o *strings.Builder, sortorder string) (int) {
 	q = fmt.Sprintf("SELECT timestamp, datelog, host, application, message from log WHERE %s", q)
 	fmt.Println(q)
 
-	conn, err := sqlite3.Open(Config.Logdbpath)
-	conn.BusyTimeout(5 * time.Second)
-	if err != nil {
-		log.Fatalf("ERROR - can not open log database file - %v\n", err)
-	}
+	conn := GetDBConn()
 	defer conn.Close()
 
 	stmt, err := conn.Prepare(q)
@@ -239,17 +233,14 @@ func StartServer() {
 
 //SetUpLogDatabase -
 func SetUpLogDatabase() {
-	conn, err := sqlite3.Open(Config.Logdbpath)
-	if err != nil {
-		log.Fatalf("ERROR - can not open log database file - %v\n", err)
-	}
+	conn := GetDBConn()
 	defer conn.Close()
-	conn.BusyTimeout(5 * time.Second)
+
 	// err = conn.Exec(`
 	// CREATE VIRTUAL TABLE IF NOT EXISTS log USING fts5(timestamp, datelog, host, application, message);
 	// PRAGMA main.synchronous=OFF;
 	// `)
-	err = conn.Exec(`
+	err := conn.Exec(`
 	CREATE TABLE IF NOT EXISTS log(id integer primary key autoincrement,timestamp int, datelog int, host text, application text, message text);
 	CREATE UNIQUE INDEX IF NOT EXISTS t_host_idx ON log(timestamp, host);
 	PRAGMA main.page_size = 4096;
@@ -275,12 +266,7 @@ type LogData struct {
 
 //InsertLog -
 func InsertLog(data []byte) {
-	conn, err := sqlite3.Open(Config.Logdbpath)
-	conn.BusyTimeout(5 * time.Second)
-
-	if err != nil {
-		log.Fatalf("ERROR - can not open log database file - %v\n", err)
-	}
+	conn := GetDBConn()
 	defer conn.Close()
 
 	var json = jsoniter.ConfigCompatibleWithStandardLibrary
@@ -288,7 +274,7 @@ func InsertLog(data []byte) {
 	if e := json.Unmarshal(data, &logData); e != nil {
 		log.Printf("ERROR - can not parse json data for logline - %v\n", e)
 	}
-	err = conn.Exec(`INSERT INTO log(timestamp, datelog, host, application, message) VALUES (?, ?, ?, ?, ?)`, logData.Timestamp, logData.Datelog, logData.Host, logData.Application, logData.Message)
+	err := conn.Exec(`INSERT INTO log(timestamp, datelog, host, application, message) VALUES (?, ?, ?, ?, ?)`, logData.Timestamp, logData.Datelog, logData.Host, logData.Application, logData.Message)
 	if err != nil {
 		log.Printf("ERROR - can not insert data for logline - %v\n", err)
 	}
