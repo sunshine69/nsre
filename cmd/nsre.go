@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"regexp"
+	"time"
 	"strconv"
 	"text/template"
 	"io/ioutil"
@@ -104,6 +106,8 @@ func ProcessSearchLog(w http.ResponseWriter, r *http.Request) {
                 <td><label for="keyword">Keyword: </label></td>
 				<td><input name="keyword" id="keyword" type="text" value="{{ .keyword }}" title="keyword to search, understand & to search with AND logic."/></td>
 				<td><input type="checkbox" name="sortorder" value="DESC" {{ .sortorder }}>Sort Descending</td>
+				<td><input name="duration" id="duration" type="text" value="{{ .duration }}" title="Time range, eg. 15m for 15 minutes ago. Or dd/mm/yyyy hh:mm:ss - dd/mm/yyyy hh:mm:ss"/></td>
+				<td><input name="tz" id="tz" type="text" value="{{ .tz }}" title="TimeZone"/></td>
             </tr>
             <tr>
 				<td colspan="2" align="center">
@@ -122,10 +126,13 @@ func ProcessSearchLog(w http.ResponseWriter, r *http.Request) {
 	var output strings.Builder
 	switch r.Method {
 	case "GET":
+		duration, tz := "15m", "AEST"
 		t := template.Must(template.New("webgui").Parse(tString))
 		e := t.Execute(w, map[string]string{
 			"sortorder": "checked",
 			"keyword": "",
+			"duration": duration,
+			"tz": tz,
 			})
 		if e != nil {
 			fmt.Printf("%v\n", e)
@@ -143,13 +150,18 @@ func ProcessSearchLog(w http.ResponseWriter, r *http.Request) {
 			sortorderVal = "DESC"
 			checkedSort = "checked"
 		}
-		c := SearchLog(keyword, &output, sortorderVal)
+		duration := r.FormValue("duration")
+		tz := r.FormValue("tz")
+
+		c := SearchLog(keyword, &output, sortorderVal, duration, tz)
 		t := template.Must(template.New("webgui").Parse(tString))
 		e := t.Execute(w, map[string]string{
 			"count": strconv.FormatInt(int64(c), 10),
 			"output": output.String(),
 			"sortorder": checkedSort,
 			"keyword": keyword,
+			"duration": duration,
+			"tz": tz,
 			})
 		if e != nil {
 			fmt.Printf("%v\n", e)
@@ -158,11 +170,35 @@ func ProcessSearchLog(w http.ResponseWriter, r *http.Request) {
 }
 
 //SearchLog -
-func SearchLog(keyword string, o *strings.Builder, sortorder string) (int) {
-	q := ""
+func SearchLog(keyword string, o *strings.Builder, sortorder, duration, tz string) (int) {
 	keyword = strings.TrimSpace(keyword)
 	tokens := strings.Split(keyword, " & ")
 	_l := len(tokens)
+
+	timerangePtn := regexp.MustCompile(`([\d]{2,2}/[\d]{2,2}/[\d]{4,4} [\d]{2,2}:[\d]{2,2}:[\d]{2,2}) - ([\d]{2,2}/[\d]{2,2}/[\d]{4,4} [\d]{2,2}:[\d]{2,2}:[\d]{2,2})`)
+
+	var start, end time.Time
+
+	dur, e := time.ParseDuration(duration)
+	if e != nil {
+		m := timerangePtn.FindStringSubmatch(duration)
+		if len(m) != 3 {
+			log.Printf("ERROR Can not parse duration. Set default to 15m ago - %v", e)
+			dur, _ = time.ParseDuration("15m")
+		} else {
+			timeLayout := "02/01/2006 15:04:05 MST"
+			start, _ = time.Parse(timeLayout, m[1] + " " + tz )
+			end, _ = time.Parse(timeLayout, m[2] + " " + tz)
+		}
+	} else {
+		end = time.Now()
+		start = end.Add(-1 * dur)
+	}
+
+	fmt.Printf("start: %s\n", start.Format("01/02/2006 15:04:05 MST") )
+	fmt.Printf("end: %s\n", end.Format("01/02/2006 15:04:05 MST") )
+
+	q := fmt.Sprintf("SELECT timestamp, datelog, host, application, message from log WHERE ((timestamp > %d) AND (timestamp < %d)) AND ", start.UnixNano(), end.UnixNano())
 
 	for i, t := range(tokens) {
 		if i == _l - 1 {
@@ -171,7 +207,7 @@ func SearchLog(keyword string, o *strings.Builder, sortorder string) (int) {
 			q = fmt.Sprintf("%s (host LIKE '%%%s%%' OR application LIKE '%%%s%%' OR message LIKE '%%%s%%') AND ", q, t, t, t)
 		}
 	}
-	q = fmt.Sprintf("SELECT timestamp, datelog, host, application, message from log WHERE %s", q)
+
 	fmt.Println(q)
 
 	conn := GetDBConn()
