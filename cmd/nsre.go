@@ -96,7 +96,14 @@ func ProcessCommand(w http.ResponseWriter, r *http.Request) {
 func ProcessSearchLog(w http.ResponseWriter, r *http.Request) {
 	const tString = `<!DOCTYPE html>
 <head>
-    <title>webgui</title>
+	<title>webgui</title>
+	<script>
+		function doClear() {
+			document.getElementById('keyword').value = ''
+			document.getElementById('tz').value = 'AEST'
+			document.getElementById('duration').value = '15m'
+		}
+	</script>
 </head>
 <body>
     <h1>Search Log</h1>
@@ -111,7 +118,7 @@ func ProcessSearchLog(w http.ResponseWriter, r *http.Request) {
             </tr>
             <tr>
 				<td colspan="2" align="center">
-					<input type="button" value="clear" onclick="document.getElementById('keyword').value = '';">&nbsp
+					<input type="button" value="clear" onclick="doClear();">&nbsp
 					<input name="submit" type="submit" value="submit">
 				</td>
             </tr>
