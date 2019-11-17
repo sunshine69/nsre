@@ -202,7 +202,7 @@ func SearchLog(keyword string, o *strings.Builder, sortorder, duration, tz strin
 
 	for i, t := range(tokens) {
 		if i == _l - 1 {
-			q = fmt.Sprintf("%s (host LIKE '%%%s%%' OR application LIKE '%%%s%%' OR message LIKE '%%%s%%') ORDER BY timestamp %s LIMIT 200;", q, t, t, t, sortorder)
+			q = fmt.Sprintf("%s (host LIKE '%%%s%%' OR application LIKE '%%%s%%' OR message LIKE '%%%s%%') ORDER BY timestamp %s;", q, t, t, t, sortorder)
 		} else {
 			q = fmt.Sprintf("%s (host LIKE '%%%s%%' OR application LIKE '%%%s%%' OR message LIKE '%%%s%%') AND ", q, t, t, t)
 		}
