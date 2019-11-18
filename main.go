@@ -41,6 +41,7 @@ func main() {
 	jwtkey := flag.String("jwtkey", "", "JWT API Key to talk to server")
 	sslcert := flag.String("sslcert", "", "SSL certificate path")
 	sslkey := flag.String("sslkey", "", "SSL key path")
+	poll := flag.Bool("poll", false, "Use polling file for tail. Usefull for windows.")
 
 	flag.Parse()
 
@@ -69,7 +70,7 @@ func main() {
 		// Location:    seek,
 		ReOpen:      *tailFollow,
 		MustExist:   false,
-		Poll:        false,
+		Poll:        *poll,
 		Pipe:        false,
 		Follow:      *tailFollow,
 		MaxLineSize: 0,
