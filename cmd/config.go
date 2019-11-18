@@ -21,7 +21,8 @@ type LogFile struct {
     Paths []string
     Timelayout string //Parse the match below into go time object
     Timepattern string //extract the timestamp part into a timeStr which is fed into the Timelayout
-	Timeadjust string //If the time extracted string miss some info (like year or zone etc) this string will be appended to the string
+    Timeadjust string //If the time extracted string miss some info (like year or zone etc) this string will be appended to the string
+    Timestrreplace []string //Do search/replace the capture before parse time. As go does not support , aas sec fraction this is to work around for this case.
     Pattern string //will be matched to extract the HOSTNAME APP-NAME MSG part of the line.
     Multilineptn string //detect if the line is part of the previous line
     Appname string //Overrite the appname of the logfile if not empty
@@ -87,6 +88,7 @@ func GenerateDefaultConfig(opt ...interface{}) (e error) {
                 Timelayout: "Jan 02 15:04:05 2006 MST",
                 Timepattern: `^([a-zA-Z]{3,3}[\s]+[\d]{0,2}[\s]+[\d]{2,2}\:[\d]{2,2}\:[\d]{2,2}) `,
                 Timeadjust: "2019 AEST",
+                Timestrreplace: []string{",", "."},
                 Pattern: `([^\s]+) ([^\s]+) (.*)$`,
                 Multilineptn: `([^\s]+.*)$`,
                 Appname: "",

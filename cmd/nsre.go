@@ -105,15 +105,17 @@ func ProcessSearchLog(w http.ResponseWriter, r *http.Request) {
 		}
 	</script>
 	<style>
-	#customers {
+	  #customers {
 		font-family: "Trebuchet MS", Arial, Helvetica, sans-serif;
 		border-collapse: collapse;
 		width: 100%;
+		table-layout: fixed;
 	  }
 
 	  #customers td, #customers th {
 		border: 1px solid #ddd;
-		padding: 8px;
+		padding: 4px;
+		word-wrap: break-word;
 	  }
 
 	  #customers tr:nth-child(even){background-color: #f2f2f2;}
@@ -127,6 +129,7 @@ func ProcessSearchLog(w http.ResponseWriter, r *http.Request) {
 		background-color: #4CAF50;
 		color: white;
 	  }
+
 	</style>
 </head>
 <body>
@@ -251,9 +254,14 @@ func SearchLog(keyword string, o *strings.Builder, sortorder, duration, tz strin
 	defer stmt.Close()
 	fmt.Fprintf(o, `
 	<table id="customers">
+		<col width="10%">
+		<col width="10%">
+		<col width="10%">
+		<col width="10%">
+		<col width="60%">
 		<tr>
-			<th>TS</th>
-			<th>DateLogged</th>
+			<th >TS</th>
+			<th>Date</th>
 			<th>Host</th>
 			<th>Application</th>
 			<th>Message</th>

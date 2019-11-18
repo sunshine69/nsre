@@ -232,6 +232,9 @@ func ProcessTailLines(cfg *TailLogConfig, tail *tail.Tail) {
 			if match[0] != "notimeptn" {
 				timeStr := strings.Join([]string{match[1], cfg.Timeadjust}, " ")
 				timeStr = strings.Replace(timeStr, "  ", " 0", -1)
+				if len(cfg.Timestrreplace) == 2 {
+					timeStr = strings.Replace(timeStr, cfg.Timestrreplace[0], cfg.Timestrreplace[1], -1)
+				}
 				timeParsed, e = time.Parse(timeLayout, timeStr)
 				if e != nil {
 					log.Fatalf("ERROR Fail to parse time %v\n", e)
