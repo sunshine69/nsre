@@ -104,6 +104,30 @@ func ProcessSearchLog(w http.ResponseWriter, r *http.Request) {
 			document.getElementById('duration').value = '15m'
 		}
 	</script>
+	<style>
+	#customers {
+		font-family: "Trebuchet MS", Arial, Helvetica, sans-serif;
+		border-collapse: collapse;
+		width: 100%;
+	  }
+
+	  #customers td, #customers th {
+		border: 1px solid #ddd;
+		padding: 8px;
+	  }
+
+	  #customers tr:nth-child(even){background-color: #f2f2f2;}
+
+	  #customers tr:hover {background-color: #ddd;}
+
+	  #customers th {
+		padding-top: 12px;
+		padding-bottom: 12px;
+		text-align: left;
+		background-color: #4CAF50;
+		color: white;
+	  }
+	</style>
 </head>
 <body>
     <h1>Search Log</h1>
@@ -225,7 +249,16 @@ func SearchLog(keyword string, o *strings.Builder, sortorder, duration, tz strin
 		log.Printf("ERROR - %v\n", err)
 	}
 	defer stmt.Close()
-	fmt.Fprintf(o, "<table>")
+	fmt.Fprintf(o, `
+	<table id="customers">
+		<tr>
+			<th>TS</th>
+			<th>DateLogged</th>
+			<th>Host</th>
+			<th>Application</th>
+			<th>Message</th>
+		</tr>
+	`)
 	count := 0
 	for {
 		hasRow, err := stmt.Step()
