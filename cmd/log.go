@@ -196,7 +196,7 @@ func ProcessTailLines(cfg *TailLogConfig, tail *tail.Tail) {
 
 	if cfg.Timepattern != "" {
 		timePtn = regexp.MustCompile(cfg.Timepattern)
-		log.Printf("time ptn: '%s'\nline ptn: '%s'\n", cfg.Timepattern, linePtnStr)
+		log.Printf("INFO - time ptn: '%s'\nline ptn: '%s'\n", cfg.Timepattern, linePtnStr)
 	}
 
 	timeLayout := cfg.Timelayout
@@ -282,7 +282,8 @@ func ProcessTailLines(cfg *TailLogConfig, tail *tail.Tail) {
 					lineStack = append(lineStack, msgStr)
 				}
 			} else {
-				log.Printf("The pattern does not parse correct components. You need to have capture groups - TIMESTAMP HOSTNAME APP-NAME MSG\nLinePtn: '%s'.\n", linePtnStr)
+				log.Printf("WARN - The pattern does not parse correct components.\nLinePtn: '%s'.\nLine: '%s'\n", linePtnStr, line.Text)
+				beginLineMatch = false
 			}
 		} else {
 			if beginLineMatch {
@@ -294,12 +295,12 @@ func ProcessTailLines(cfg *TailLogConfig, tail *tail.Tail) {
 					}
 				} else {
 					beginLineMatch = false
-					log.Printf("Can not parse multiline pattern\n")
-					fmt.Printf("Line Text: '%s'\n", line.Text)
+					log.Printf("WARN - Can not parse multiline pattern. Previous time matched. Check your multiline pattern regex.\n")
+					fmt.Printf("WARN - Line Text: '%s'\nPattern: %s\n", line.Text, cfg.Timepattern)
 				}
 			} else {
-				log.Printf("Can not parse time pattern\n")
-				fmt.Printf("Line Text: '%s'\nPattern: %s\n", line.Text, cfg.Timepattern)
+				log.Printf("WARN - Can not parse time pattern. No previous time matched. Is it raw log without time pattern? \n")
+				fmt.Printf("WARN - Line Text: '%s'\nPattern: %s\n", line.Text, cfg.Timepattern)
 			}
 		}
 	}
