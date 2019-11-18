@@ -63,6 +63,19 @@ func TailOnePath(cfg *TailLogConfig, wg *sync.WaitGroup, logFile string) {
 	wg.Done()
 }
 
+//TestTailLog -
+func TestTailLog(cfg tail.Config, logFile string) {
+	log.Printf("Start test tailing %s\n", logFile)
+	t, e := tail.TailFile(logFile, cfg)
+	if e != nil {
+		log.Fatalf("Can not tail file - %v\n", e)
+	}
+
+	for line := range t.Lines {
+		fmt.Printf("%s\n", line.Text)
+	}
+}
+
 //TailLog -
 func TailLog(cfg *TailLogConfig, wg *sync.WaitGroup){
 	for _, logFile := range(cfg.Paths) {
@@ -170,6 +183,8 @@ func SendLine(timeParsed time.Time, hostStr, appNameStr, msgStr string, passPtn 
 	return IsOK
 }
 
+
+
 //ProcessTailLines -
 func ProcessTailLines(cfg *TailLogConfig, tail *tail.Tail) {
 	tailLines := tail.Lines
@@ -267,7 +282,7 @@ func ProcessTailLines(cfg *TailLogConfig, tail *tail.Tail) {
 					lineStack = append(lineStack, msgStr)
 				}
 			} else {
-				// log.Printf("The pattern does not parse correct components. You need to have capture groups - TIMESTAMP HOSTNAME APP-NAME MSG\nLinePtn: '%s'.\n", linePtnStr)
+				log.Printf("The pattern does not parse correct components. You need to have capture groups - TIMESTAMP HOSTNAME APP-NAME MSG\nLinePtn: '%s'.\n", linePtnStr)
 			}
 		} else {
 			if beginLineMatch {
