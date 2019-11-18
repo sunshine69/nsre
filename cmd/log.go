@@ -91,7 +91,7 @@ func SaveTailPosition(t *tail.Tail, cfg *TailLogConfig) {
 	if e != nil {
 		log.Printf("WARN - Can not tell from tail where are we - %v\n", e)
 	} else {
-		filename := filepath.Join(os.Getenv("HOME"), "taillog-" + cfg.Name + "-" + filepath.Base(t.Filename))
+		filename := filepath.Join(os.Getenv("HOME"), "taillog-" + CreateHash(cfg.Name + t.Filename))
 		_pos := strconv.FormatInt(pos, 10)
 		if e = ioutil.WriteFile(filename, []byte(_pos), 0750); e != nil {
 			log.Printf("WARN - Can not save pos to %s - %v\n",filename ,e)
@@ -101,7 +101,7 @@ func SaveTailPosition(t *tail.Tail, cfg *TailLogConfig) {
 
 //LoadTailPosition -
 func LoadTailPosition(t *tail.Tail, cfg *TailLogConfig) (int64) {
-	filename := filepath.Join(os.Getenv("HOME"), "taillog-" + cfg.Name + "-" + filepath.Base(t.Filename))
+	filename := filepath.Join(os.Getenv("HOME"), "taillog-" + CreateHash(cfg.Name + t.Filename))
 	data, e := ioutil.ReadFile(filename)
 	if e != nil {
 		log.Printf("WARN - Can not read previous pos. Will set seek to 0 - %s\n", e)
