@@ -232,13 +232,13 @@ func SearchLog(keyword string, o *strings.Builder, sortorder, duration, tz strin
 	fmt.Printf("start: %s\n", start.Format("01/02/2006 15:04:05 MST") )
 	fmt.Printf("end: %s\n", end.Format("01/02/2006 15:04:05 MST") )
 
-	q := fmt.Sprintf("SELECT timestamp, datelog, host, application, message from log WHERE ((timestamp > %d) AND (timestamp < %d)) AND ", start.UnixNano(), end.UnixNano())
+	q := fmt.Sprintf("SELECT timestamp, datelog, host, application, logfile, message from log WHERE ((timestamp > %d) AND (timestamp < %d)) AND ", start.UnixNano(), end.UnixNano())
 
 	for i, t := range(tokens) {
 		if i == _l - 1 {
-			q = fmt.Sprintf("%s (host LIKE '%%%s%%' OR application LIKE '%%%s%%' OR message LIKE '%%%s%%') ORDER BY timestamp %s;", q, t, t, t, sortorder)
+			q = fmt.Sprintf("%s (host LIKE '%%%s%%' OR application LIKE '%%%s%%' OR logfile LIKE '%%%s%%' OR message LIKE '%%%s%%') ORDER BY timestamp %s;", q, t, t, t, t, sortorder)
 		} else {
-			q = fmt.Sprintf("%s (host LIKE '%%%s%%' OR application LIKE '%%%s%%' OR message LIKE '%%%s%%') AND ", q, t, t, t)
+			q = fmt.Sprintf("%s (host LIKE '%%%s%%' OR application LIKE '%%%s%%' OR logfile LIKE '%%%s%%' OR message LIKE '%%%s%%') AND ", q, t, t, t, t)
 		}
 	}
 
@@ -277,22 +277,22 @@ func SearchLog(keyword string, o *strings.Builder, sortorder, duration, tz strin
 			break
 		}
 		var timestampVal, datelogVal int64
-		var host, application, msg string
+		var host, application, logfile, msg string
 
-		err = stmt.Scan(&timestampVal, &datelogVal, &host, & application, &msg)
+		err = stmt.Scan(&timestampVal, &datelogVal, &host, & application, &logfile, &msg)
 		if err != nil {
 			log.Printf("ERROR - %v\n", err)
 		}
 		timestamp, datelog := NsToTime(timestampVal), NsToTime(datelogVal)
 		AUTimeLayout := "02/01/2006 15:04:05 MST"
 		line := fmt.Sprintf(`
-		<tr>
+		<tr title="%s">
 			<td>%s</td>
 			<td>%s</td>
 			<td>%s</td>
 			<td>%s</td>
 			<td>%s</td>
-		</tr>`, timestamp.Format(AUTimeLayout), datelog.Format(AUTimeLayout), template.HTMLEscapeString(host), template.HTMLEscapeString(application), template.HTMLEscapeString(msg))
+		</tr>`, logfile,timestamp.Format(AUTimeLayout), datelog.Format(AUTimeLayout), template.HTMLEscapeString(host), template.HTMLEscapeString(application), template.HTMLEscapeString(msg))
 		fmt.Fprintf(o, line)
 		count = count + 1
 	}
@@ -332,7 +332,7 @@ func SetUpLogDatabase() {
 	// PRAGMA main.synchronous=OFF;
 	// `)
 	err := conn.Exec(`
-	CREATE TABLE IF NOT EXISTS log(id integer primary key autoincrement,timestamp int, datelog int, host text, application text, message text);
+	CREATE TABLE IF NOT EXISTS log(id integer primary key autoincrement,timestamp int, datelog int, host text, application text, logfile text, message text);
 	CREATE UNIQUE INDEX IF NOT EXISTS t_host_idx ON log(timestamp, host);
 	PRAGMA main.page_size = 4096;
 	PRAGMA main.cache_size=10000;
@@ -352,6 +352,7 @@ type LogData struct {
 	Datelog int64
 	Host string
 	Application string
+	Logfile string
 	Message string
 }
 
@@ -365,7 +366,7 @@ func InsertLog(data []byte) {
 	if e := json.Unmarshal(data, &logData); e != nil {
 		log.Printf("ERROR - can not parse json data for logline - %v\n", e)
 	}
-	err := conn.Exec(`INSERT INTO log(timestamp, datelog, host, application, message) VALUES (?, ?, ?, ?, ?)`, logData.Timestamp, logData.Datelog, logData.Host, logData.Application, logData.Message)
+	err := conn.Exec(`INSERT INTO log(timestamp, datelog, host, application, logfile, message) VALUES (?, ?, ?, ?, ?, ?)`, logData.Timestamp, logData.Datelog, logData.Host, logData.Application, logData.Logfile, logData.Message)
 	if err != nil {
 		log.Printf("ERROR - can not insert data for logline - %v\n", err)
 	}

@@ -140,13 +140,14 @@ func filterPassword(text string, passPtn *regexp.Regexp) (string) {
 }
 
 //SendLine -
-func SendLine(timeParsed time.Time, hostStr, appNameStr, msgStr string, passPtn *regexp.Regexp) (bool) {
+func SendLine(timeParsed time.Time, hostStr, appNameStr, logFile, msgStr string, passPtn *regexp.Regexp) (bool) {
 	IsOK := true
 	logData := LogData{
 		Timestamp: time.Now().UnixNano(),
 		Datelog: timeParsed.UnixNano(),
 		Host: hostStr,
 		Application: appNameStr,
+		Logfile: logFile,
 		Message: filterPassword(msgStr, passPtn),
 	}
 	var json = jsoniter.ConfigCompatibleWithStandardLibrary
@@ -182,8 +183,6 @@ func SendLine(timeParsed time.Time, hostStr, appNameStr, msgStr string, passPtn 
 	}
 	return IsOK
 }
-
-
 
 //ProcessTailLines -
 func ProcessTailLines(cfg *TailLogConfig, tail *tail.Tail) {
@@ -224,7 +223,7 @@ func ProcessTailLines(cfg *TailLogConfig, tail *tail.Tail) {
 			// log.Printf("EOF reached. Flush stack\n")
 
 			for {
-				if SendLine(timeParsed, hostStr, appNameStr, msgStr, passPtn) { break }
+				if SendLine(timeParsed, hostStr, appNameStr, tail.Filename, msgStr, passPtn) { break }
 				time.Sleep(15 * time.Second)
 			}
 		}
@@ -240,7 +239,7 @@ func ProcessTailLines(cfg *TailLogConfig, tail *tail.Tail) {
 				msgStr := strings.Join(lineStack, "\n")
 				lineStack = lineStack[:0]
 				for {
-					if SendLine(timeParsed, hostStr, appNameStr, msgStr, passPtn) {break}
+					if SendLine(timeParsed, hostStr, appNameStr, tail.Filename, msgStr, passPtn) {break}
 					time.Sleep(15 * time.Second)
 				}
 			}
