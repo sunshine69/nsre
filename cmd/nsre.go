@@ -100,6 +100,8 @@ func ProcessSearchLog(w http.ResponseWriter, r *http.Request) {
 	<script>
 		function doClear() {
 			document.getElementById('keyword').value = ''
+		}
+		function doClearTime() {
 			document.getElementById('tz').value = 'AEST'
 			document.getElementById('duration').value = '15m'
 		}
@@ -145,8 +147,11 @@ func ProcessSearchLog(w http.ResponseWriter, r *http.Request) {
             </tr>
             <tr>
 				<td colspan="2" align="center">
-					<input type="button" value="clear" onclick="doClear();">&nbsp
+					<input type="button" value="reset" onclick="doClear();">&nbsp
 					<input name="submit" type="submit" value="submit">
+				</td>
+				<td colspan="3" align="center">
+					<input type="button" value="reset" onclick="doClearTime();">&nbsp
 				</td>
             </tr>
     	</table>
@@ -260,7 +265,7 @@ func SearchLog(keyword string, o *strings.Builder, sortorder, duration, tz strin
 		<col width="10%">
 		<col width="60%">
 		<tr>
-			<th >TS</th>
+			<th>TS</th>
 			<th>Date</th>
 			<th>Host</th>
 			<th>Application</th>
