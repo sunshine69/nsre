@@ -29,11 +29,11 @@ type LogFile struct {
 }
 //AppConfig -
 type AppConfig struct { //Why do I have to tag every field! Because yaml driver automatically lowercase the field name to look into the yaml file <yuk>
-    Port int
+    Port int //Server mode - Port to listen for web gui, log harvesting and Command executor
     Commands []Command
     JwtKey string
     Logfiles []LogFile
-    Serverurl string
+    Serverurl string //Client mode - URL to ship log to or to send command to be executed
     Logdbpath string
     Dbtimeout string
     Sslcert string
