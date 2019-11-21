@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"fmt"
 	"golang.org/x/oauth2/google"
 	"golang.org/x/oauth2"
 	"time"
@@ -32,6 +33,7 @@ type LogFile struct {
 }
 //AppConfig -
 type AppConfig struct { //Why do I have to tag every field! Because yaml driver automatically lowercase the field name to look into the yaml file <yuk>
+    Serverdomain string
     Port int //Server mode - Port to listen for web gui, log harvesting and Command executor
     Commands []Command
     JwtKey string
@@ -76,6 +78,7 @@ func GetDBConn() (*sqlite3.Conn) {
 func GenerateDefaultConfig(opt ...interface{}) (e error) {
     defaultConfig := AppConfig {
         Port: 8000,
+        Serverdomain: "localhost",
         Serverurl: "http://localhost:8000",
         JwtKey: "ChangeThisKeyInYourSystem",
         Logdbpath: "logs.db",
@@ -177,6 +180,8 @@ const OauthGoogleUrlAPI = "https://www.googleapis.com/oauth2/v2/userinfo?access_
 //SessionStore -
 var SessionStore *sessions.CookieStore
 
+//ServerProtocol -
+var ServerProtocol string
 
 //LoadConfig -
 func LoadConfig(fPath string) (e error) {
@@ -185,8 +190,16 @@ func LoadConfig(fPath string) (e error) {
         return e
     }
     e = yaml.Unmarshal(yamlStr, &Config)
+
+
+    if Config.Sslkey == "" {
+        ServerProtocol = "http"
+    } else {
+        ServerProtocol = "https"
+    }
+
     GoogleOauthConfig = oauth2.Config {
-        RedirectURL:  "http://localhost:8000/auth/google/callback",
+        RedirectURL:  fmt.Sprintf("%s://%s:%s/auth/google/callback", ServerProtocol, Config.Serverdomain, Config.Port),
         // ClientID:     os.Getenv("GOOGLE_OAUTH_CLIENT_ID"),
         ClientID:     Config.AppGoogleClientID,
         ClientSecret: Config.AppGoogleClientSecret,
