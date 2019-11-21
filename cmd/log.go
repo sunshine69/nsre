@@ -142,13 +142,16 @@ func filterPassword(text string, passPtn *regexp.Regexp) (string) {
 //SendLine -
 func SendLine(timeParsed time.Time, hostStr, appNameStr, logFile, msgStr string, passPtn *regexp.Regexp) (bool) {
 	IsOK := true
+	message := filterPassword(msgStr, passPtn)
+	// message = DecodeJenkinsConsoleNote(message)
+
 	logData := LogData{
 		Timestamp: time.Now().UnixNano(),
 		Datelog: timeParsed.UnixNano(),
 		Host: hostStr,
 		Application: appNameStr,
 		Logfile: logFile,
-		Message: filterPassword(msgStr, passPtn),
+		Message: message,
 	}
 	var json = jsoniter.ConfigCompatibleWithStandardLibrary
 	output, e := json.Marshal(&logData)

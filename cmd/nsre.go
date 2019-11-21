@@ -42,9 +42,29 @@ func isAuthorized(endpoint func(http.ResponseWriter, *http.Request)) http.Handle
     })
 }
 
+func isOauthAuthorized(endpoint func(http.ResponseWriter, *http.Request)) http.Handler {
+    return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		session, err := SessionStore.Get(r, "auth-session")
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		useremail := session.Values["useremail"]
+
+		if useremail == nil {
+			log.Printf("ERROR - No session\n")
+			// fmt.Fprintf(w, `<!DOCTYPE html>
+			// <html><body>Not Authorized - <a href="/auth/google/login">Login</a></body></html>`)
+			http.Redirect(w, r, "/auth/google/login", http.StatusTemporaryRedirect)
+			return
+		}
+		endpoint(w, r)
+    })
+}
+
 func homePage(w http.ResponseWriter, r *http.Request) {
-    fmt.Fprintf(w, "Hello World")
-    fmt.Println("Endpoint Hit: homePage")
+    fmt.Fprintf(w, "Hello. If you see this message, the jwt auth works")
+    fmt.Println("Endpoint Hit: homePage. ")
 }
 
 func runSystemCommand(command string) (o string) {
@@ -308,10 +328,14 @@ func SearchLog(keyword string, o *strings.Builder, sortorder, duration, tz strin
 //HandleRequests -
 func HandleRequests() {
 	router := mux.NewRouter()
+	router.HandleFunc("/auth/google/login", OauthGoogleLogin)
+	router.HandleFunc("/auth/google/callback", OauthGoogleCallback)
+	router.Handle("/searchlog", isOauthAuthorized(ProcessSearchLog))
+
 	router.Handle("/", isAuthorized(homePage)).Methods("GET")
 	router.Handle("/run/{CommandName}", isAuthorized(ProcessCommand)).Methods("GET")
 	router.Handle("/log", isAuthorized(ProcessLog)).Methods("POST")
-	router.HandleFunc("/searchlog", ProcessSearchLog)
+
 	if Config.Sslkey != "" {
 		log.Printf("Start SSL/TLS server on port %d\n", Config.Port)
 		log.Fatal(http.ListenAndServeTLS(fmt.Sprintf(":%d", Config.Port), Config.Sslcert, Config.Sslkey, router))
@@ -338,6 +362,7 @@ func SetUpLogDatabase() {
 	// `)
 	err := conn.Exec(`
 	CREATE TABLE IF NOT EXISTS log(id integer primary key autoincrement,timestamp int, datelog int, host text, application text, logfile text, message text);
+	CREATE TABLE IF NOT EXISTS user(id integer primary key autoincrement, username text, email text UNIQUE);
 	CREATE UNIQUE INDEX IF NOT EXISTS t_host_idx ON log(timestamp, host);
 	PRAGMA main.page_size = 4096;
 	PRAGMA main.cache_size=10000;

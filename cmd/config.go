@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"golang.org/x/oauth2/google"
+	"golang.org/x/oauth2"
 	"time"
 	"github.com/bvinc/go-sqlite-lite/sqlite3"
 	"os"
@@ -8,6 +10,7 @@ import (
 	"log"
     "io/ioutil"
     "gopkg.in/yaml.v2"
+    "github.com/gorilla/sessions"
 )
 
 //Command -
@@ -39,6 +42,10 @@ type AppConfig struct { //Why do I have to tag every field! Because yaml driver 
     Sslcert string
     Sslkey string
     PasswordFilterPattern string `yaml:"passwordfilterpattern"`
+    AppGoogleClientID string
+    AppGoogleClientSecret string
+    Sessionkey string
+    AuthorizedDomain map[string]bool
 }
 
 //Config - Global
@@ -162,6 +169,15 @@ func GenerateDefaultConfig(opt ...interface{}) (e error) {
     return LoadConfig(fPath)
 }
 
+// Scopes: OAuth 2.0 scopes provide a way to limit the amount of access that is granted to an access token.
+var GoogleOauthConfig oauth2.Config
+
+const OauthGoogleUrlAPI = "https://www.googleapis.com/oauth2/v2/userinfo?access_token="
+
+//SessionStore -
+var SessionStore *sessions.CookieStore
+
+
 //LoadConfig -
 func LoadConfig(fPath string) (e error) {
     yamlStr, e := ioutil.ReadFile(fPath)
@@ -169,5 +185,14 @@ func LoadConfig(fPath string) (e error) {
         return e
     }
     e = yaml.Unmarshal(yamlStr, &Config)
+    GoogleOauthConfig = oauth2.Config {
+        RedirectURL:  "http://localhost:8000/auth/google/callback",
+        // ClientID:     os.Getenv("GOOGLE_OAUTH_CLIENT_ID"),
+        ClientID:     Config.AppGoogleClientID,
+        ClientSecret: Config.AppGoogleClientSecret,
+        Scopes:       []string{"https://www.googleapis.com/auth/userinfo.email"},
+        Endpoint:     google.Endpoint,
+    }
+    SessionStore = sessions.NewCookieStore([]byte(Config.Sessionkey))
     return e
 }
