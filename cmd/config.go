@@ -199,7 +199,7 @@ func LoadConfig(fPath string) (e error) {
     }
 
     GoogleOauthConfig = oauth2.Config {
-        RedirectURL:  fmt.Sprintf("%s://%s:%s/auth/google/callback", ServerProtocol, Config.Serverdomain, Config.Port),
+        RedirectURL:  fmt.Sprintf("%s://%s:%d/auth/google/callback", ServerProtocol, Config.Serverdomain, Config.Port),
         // ClientID:     os.Getenv("GOOGLE_OAUTH_CLIENT_ID"),
         ClientID:     Config.AppGoogleClientID,
         ClientSecret: Config.AppGoogleClientSecret,
