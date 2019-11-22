@@ -17,7 +17,7 @@ import (
 	"os"
 	"log"
 	"fmt"
-	"github.com/hpcloud/tail"
+	"github.com/nxadm/tail"
 	"github.com/json-iterator/go"
 )
 
@@ -57,6 +57,7 @@ func TailOnePath(cfg *TailLogConfig, wg *sync.WaitGroup, logFile string) {
 		log.Printf("%s captured. Do cleaning up\n", s.String())
 		SaveTailPosition(t, cfg)
 		t.Stop()
+		t.Cleanup()
 	} else {
 		ProcessTailLines(cfg, t)
 	}

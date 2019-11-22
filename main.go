@@ -3,7 +3,7 @@ package main
 import (
 	"time"
 	"path/filepath"
-	"github.com/hpcloud/tail"
+	"github.com/nxadm/tail"
 	"sync"
 	"os"
 	"log"
