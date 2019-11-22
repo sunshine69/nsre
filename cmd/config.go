@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"strconv"
 	"fmt"
 	"golang.org/x/oauth2/google"
 	"golang.org/x/oauth2"
@@ -196,7 +197,7 @@ func LoadConfig(fPath string) (e error) {
     e = yaml.Unmarshal(yamlStr, &Config)
 
     _t := time.Now()
-    CurrentYear = string(_t.Year())
+    CurrentYear = strconv.FormatInt(int64(_t.Year()), 10)
     CurrentZone, _ = _t.Zone()
 
     if Config.Sslkey == "" {
