@@ -216,6 +216,10 @@ func ProcessTailLines(cfg *TailLogConfig, tail *tail.Tail) {
 	lineStack := []string{}
 	beginLineMatch := false
 
+	if cfg.Timeadjust == "syslog" {//Assume at least you restart this server once a year :P
+		cfg.Timeadjust = CurrentYear + " " + CurrentZone
+	}
+
 	for line := range tailLines {
 		if line.Text == "" || line.Text == "\n" { continue }
 		// fmt.Printf("Processing LineText: '%s'\n", line.Text)
