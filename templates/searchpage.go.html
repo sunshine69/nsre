@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>webgui</title>
+	<script>
+		function doClear() {
+			document.getElementById('keyword').value = ''
+		}
+		function doClearTime() {
+			document.getElementById('tz').value = 'AEST'
+			document.getElementById('duration').value = '15m'
+		}
+	</script>
+	<style>
+	  #customers {
+		font-family: "Trebuchet MS", Arial, Helvetica, sans-serif;
+		border-collapse: collapse;
+		width: 100%;
+		table-layout: fixed;
+	  }
+
+	  #customers td, #customers th {
+		border: 1px solid #ddd;
+		padding: 4px;
+		word-wrap: break-word;
+	  }
+
+	  #customers tr:nth-child(even){background-color: #f2f2f2;}
+
+	  #customers tr:hover {background-color: #ddd;}
+
+	  #customers th {
+		padding-top: 12px;
+		padding-bottom: 12px;
+		text-align: left;
+		background-color: #4CAF50;
+		color: white;
+	  }
+
+	</style>
+</head>
+<body>
+    <h1>Search Log</h1>
+    <form action="/searchlog" method="POST">
+        <table>
+            <tr>
+                <td><label for="keyword">Keyword: </label></td>
+				<td><input name="keyword" id="keyword" type="text" value="{{ .keyword }}" title="keyword to search, understand & to search with AND logic."/></td>
+				<td><input type="checkbox" name="sortorder" value="DESC" {{ .sortorder }}>Sort Descending</td>
+				<td><input name="duration" id="duration" type="text" value="{{ .duration }}" title="Time range, eg. 15m for 15 minutes ago. Or dd/mm/yyyy hh:mm:ss - dd/mm/yyyy hh:mm:ss"/></td>
+				<td><input name="tz" id="tz" type="text" value="{{ .tz }}" title="TimeZone"/></td>
+            </tr>
+            <tr>
+				<td colspan="2" align="center">
+					<input type="button" value="reset" onclick="doClear();">&nbsp
+					<input name="submit" type="submit" value="submit">
+				</td>
+				<td colspan="3" align="center">
+					<input type="button" value="reset" onclick="doClearTime();">&nbsp
+				</td>
+            </tr>
+    	</table>
+	</form>
+	<hr/>
+	<h2>Result:</h2>
+	<p>Found {{ .count }} records</p>
+    {{ .output }}
+</body>
+</html>

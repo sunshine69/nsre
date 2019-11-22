@@ -56,6 +56,7 @@ var Config AppConfig
 //TimeISO8601LayOut
 const (
     TimeISO8601LayOut = "2006-01-02T15:04:05-0700"
+    AUTimeLayout = "02/01/2006 15:04:05 MST"
 )
 
 //GetDBConn -

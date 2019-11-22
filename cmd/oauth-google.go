@@ -69,7 +69,7 @@ func OauthGoogleCallback(w http.ResponseWriter, r *http.Request) {
         return
 	}
 	session.Options = &sessions.Options{
-		Path:     "/searchlog",
+		Path:     "/",
 		MaxAge:   3600 * 4,
 		HttpOnly: true,
 	}

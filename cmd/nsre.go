@@ -112,86 +112,99 @@ func ProcessCommand(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+//ProcessSearchLogByID - Take an ID and search for record surrounding including the current rec with time span of 10 minutes
+func ProcessSearchLogByID(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	session, _ := SessionStore.Get(r, "auth-session")
+	var sortorder, duration, tz interface{}
+	if sortorder = session.Values["sortorder"]; sortorder == nil {
+		sortorder = "checked"
+		session.Values["sortorder"] = sortorder.(string)
+	}
+	if duration = session.Values["duration"]; duration == nil {
+		duration = "15m"
+		session.Values["duration"] = duration.(string)
+	}
+	if tz = session.Values["tz"]; tz == nil {
+		tz = "AEST"
+		session.Values["tz"] = tz.(string)
+	}
+	id := vars["id"]
+	q := `SELECT timestamp, host, application from log WHERE id = '` + id + `'`
+	conn := GetDBConn()
+	defer conn.Close()
+	stmt, _ := conn.Prepare(q)
+	defer stmt.Close()
+	var timestamp int64
+	var host, application string
+	hasRow, _ := stmt.Step()
+	if !hasRow {
+		fmt.Fprintf(w, "No row found.")
+		return
+	}
+	stmt.Scan(&timestamp, &host, &application)
+	rowTime := NsToTime(timestamp)
+	//Take the duration from the form input and use it as timerange
+	_start, _end := ParseTimeRange(duration.(string), tz.(string))
+	halfDuration := _end.Sub(_start) / 2
+
+	start := rowTime.Add(-1 * halfDuration)
+	end := rowTime.Add(halfDuration)
+	log.Printf("Time range: %s - %s\n",start.Format(AUTimeLayout), end.Format(AUTimeLayout)  )
+	q = fmt.Sprintf("SELECT id, timestamp, datelog, host, application, logfile, message from log WHERE ((timestamp > %d) AND (timestamp < %d)) AND host = '%s' AND application = '%s'", start.UnixNano(), end.UnixNano(), host, application)
+
+	var output strings.Builder
+	c := DoSQLSearch(q, &output)
+	//Load template and call search function
+	tStringb, _ := ioutil.ReadFile("templates/searchpage.go.html")
+	tString := string(tStringb)
+
+	session.Save(r, w)
+
+	t := template.Must(template.New("webgui").Parse(tString))
+	e := t.Execute(w, map[string]string{
+		"count": strconv.FormatInt(int64(c), 10),
+		"output": output.String(),
+		"sortorder": sortorder.(string),
+		"keyword": "",
+		"duration": duration.(string),
+		"tz": tz.(string),
+		})
+	if e != nil {
+		fmt.Printf("%v\n", e)
+	}
+}
+
 //ProcessSearchLog -
 func ProcessSearchLog(w http.ResponseWriter, r *http.Request) {
-	const tString = `<!DOCTYPE html>
-<head>
-	<title>webgui</title>
-	<script>
-		function doClear() {
-			document.getElementById('keyword').value = ''
-		}
-		function doClearTime() {
-			document.getElementById('tz').value = 'AEST'
-			document.getElementById('duration').value = '15m'
-		}
-	</script>
-	<style>
-	  #customers {
-		font-family: "Trebuchet MS", Arial, Helvetica, sans-serif;
-		border-collapse: collapse;
-		width: 100%;
-		table-layout: fixed;
-	  }
-
-	  #customers td, #customers th {
-		border: 1px solid #ddd;
-		padding: 4px;
-		word-wrap: break-word;
-	  }
-
-	  #customers tr:nth-child(even){background-color: #f2f2f2;}
-
-	  #customers tr:hover {background-color: #ddd;}
-
-	  #customers th {
-		padding-top: 12px;
-		padding-bottom: 12px;
-		text-align: left;
-		background-color: #4CAF50;
-		color: white;
-	  }
-
-	</style>
-</head>
-<body>
-    <h1>Search Log</h1>
-    <form action="/searchlog" method="POST">
-        <table>
-            <tr>
-                <td><label for="keyword">Keyword: </label></td>
-				<td><input name="keyword" id="keyword" type="text" value="{{ .keyword }}" title="keyword to search, understand & to search with AND logic."/></td>
-				<td><input type="checkbox" name="sortorder" value="DESC" {{ .sortorder }}>Sort Descending</td>
-				<td><input name="duration" id="duration" type="text" value="{{ .duration }}" title="Time range, eg. 15m for 15 minutes ago. Or dd/mm/yyyy hh:mm:ss - dd/mm/yyyy hh:mm:ss"/></td>
-				<td><input name="tz" id="tz" type="text" value="{{ .tz }}" title="TimeZone"/></td>
-            </tr>
-            <tr>
-				<td colspan="2" align="center">
-					<input type="button" value="reset" onclick="doClear();">&nbsp
-					<input name="submit" type="submit" value="submit">
-				</td>
-				<td colspan="3" align="center">
-					<input type="button" value="reset" onclick="doClearTime();">&nbsp
-				</td>
-            </tr>
-    	</table>
-	</form>
-	<hr/>
-	<h2>Result:</h2>
-	<p>Found {{ .count }} records</p>
-    {{ .output }}
-
-</body>`
+	session, _ := SessionStore.Get(r, "auth-session")
+	tStringb, _ := ioutil.ReadFile("templates/searchpage.go.html")
+	tString := string(tStringb)
 	var output strings.Builder
+
 	switch r.Method {
 	case "GET":
-		duration, tz := "15m", "AEST"
+		var sortorder, duration, tz interface{}
+		if sortorder = session.Values["sortorder"]; sortorder == nil {
+			sortorder = "checked"
+			session.Values["sortorder"] = sortorder.(string)
+		}
+		if duration = session.Values["duration"]; duration == nil {
+			duration = "15m"
+			session.Values["duration"] = duration.(string)
+		}
+		if tz = session.Values["tz"]; tz == nil {
+			tz = "AEST"
+			session.Values["tz"] = tz.(string)
+		}
+		session.Save(r, w)
+
 		t := template.Must(template.New("webgui").Parse(tString))
 		e := t.Execute(w, map[string]string{
-			"sortorder": "checked",
+			"sortorder": sortorder.(string),
 			"keyword": "",
-			"duration": duration,
-			"tz": tz,
+			"duration": duration.(string),
+			"tz": tz.(string),
 			})
 		if e != nil {
 			fmt.Printf("%v\n", e)
@@ -205,12 +218,17 @@ func ProcessSearchLog(w http.ResponseWriter, r *http.Request) {
 		if len(sortorder) == 0 {
 			sortorderVal = "ASC"
 			checkedSort = ""
+			session.Values["sortorder"] = checkedSort
 		} else {
 			sortorderVal = "DESC"
 			checkedSort = "checked"
+			session.Values["sortorder"] = checkedSort
 		}
 		duration := r.FormValue("duration")
 		tz := r.FormValue("tz")
+		session.Values["duration"] = duration
+		session.Values["tz"] = tz
+		session.Save(r,w)
 
 		c := SearchLog(keyword, &output, sortorderVal, duration, tz)
 		t := template.Must(template.New("webgui").Parse(tString))
@@ -228,45 +246,8 @@ func ProcessSearchLog(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-//SearchLog -
-func SearchLog(keyword string, o *strings.Builder, sortorder, duration, tz string) (int) {
-	keyword = strings.TrimSpace(keyword)
-	tokens := strings.Split(keyword, " & ")
-	_l := len(tokens)
-
-	timerangePtn := regexp.MustCompile(`([\d]{2,2}/[\d]{2,2}/[\d]{4,4} [\d]{2,2}:[\d]{2,2}:[\d]{2,2}) - ([\d]{2,2}/[\d]{2,2}/[\d]{4,4} [\d]{2,2}:[\d]{2,2}:[\d]{2,2})`)
-
-	var start, end time.Time
-
-	dur, e := time.ParseDuration(duration)
-	if e != nil {
-		m := timerangePtn.FindStringSubmatch(duration)
-		if len(m) != 3 {
-			log.Printf("ERROR Can not parse duration. Set default to 15m ago - %v", e)
-			dur, _ = time.ParseDuration("15m")
-		} else {
-			timeLayout := "02/01/2006 15:04:05 MST"
-			start, _ = time.Parse(timeLayout, m[1] + " " + tz )
-			end, _ = time.Parse(timeLayout, m[2] + " " + tz)
-		}
-	} else {
-		end = time.Now()
-		start = end.Add(-1 * dur)
-	}
-
-	fmt.Printf("start: %s\n", start.Format("01/02/2006 15:04:05 MST") )
-	fmt.Printf("end: %s\n", end.Format("01/02/2006 15:04:05 MST") )
-
-	q := fmt.Sprintf("SELECT timestamp, datelog, host, application, logfile, message from log WHERE ((timestamp > %d) AND (timestamp < %d)) AND ", start.UnixNano(), end.UnixNano())
-
-	for i, t := range(tokens) {
-		if i == _l - 1 {
-			q = fmt.Sprintf("%s (host LIKE '%%%s%%' OR application LIKE '%%%s%%' OR logfile LIKE '%%%s%%' OR message LIKE '%%%s%%') ORDER BY timestamp %s;", q, t, t, t, t, sortorder)
-		} else {
-			q = fmt.Sprintf("%s (host LIKE '%%%s%%' OR application LIKE '%%%s%%' OR logfile LIKE '%%%s%%' OR message LIKE '%%%s%%') AND ", q, t, t, t, t)
-		}
-	}
-
+//DoSQLSearch - Execute the search in the database. Return the record counts and fill the string builder object.
+func DoSQLSearch(q string, o *strings.Builder) (int) {
 	fmt.Println(q)
 
 	conn := GetDBConn()
@@ -302,27 +283,70 @@ func SearchLog(keyword string, o *strings.Builder, sortorder, duration, tz strin
 			break
 		}
 		var timestampVal, datelogVal int64
+		var id int
 		var host, application, logfile, msg string
 
-		err = stmt.Scan(&timestampVal, &datelogVal, &host, & application, &logfile, &msg)
+		err = stmt.Scan(&id, &timestampVal, &datelogVal, &host, & application, &logfile, &msg)
 		if err != nil {
 			log.Printf("ERROR - %v\n", err)
 		}
 		timestamp, datelog := NsToTime(timestampVal), NsToTime(datelogVal)
-		AUTimeLayout := "02/01/2006 15:04:05 MST"
+
 		line := fmt.Sprintf(`
 		<tr title="%s">
+			<td><a href="/searchlogbyid/%d">%s</a></td>
 			<td>%s</td>
 			<td>%s</td>
 			<td>%s</td>
 			<td>%s</td>
-			<td>%s</td>
-		</tr>`, logfile,timestamp.Format(AUTimeLayout), datelog.Format(AUTimeLayout), template.HTMLEscapeString(host), template.HTMLEscapeString(application), template.HTMLEscapeString(msg))
+		</tr>`, logfile, id, timestamp.Format(AUTimeLayout), datelog.Format(AUTimeLayout), template.HTMLEscapeString(host), template.HTMLEscapeString(application), template.HTMLEscapeString(msg))
 		fmt.Fprintf(o, line)
 		count = count + 1
 	}
 	fmt.Fprintf(o, "</table>")
 	return count
+}
+
+//ParseTimeRange -
+func ParseTimeRange(durationStr, tz string) (time.Time, time.Time) {
+	var start, end time.Time
+	timerangePtn := regexp.MustCompile(`([\d]{2,2}/[\d]{2,2}/[\d]{4,4} [\d]{2,2}:[\d]{2,2}:[\d]{2,2}) - ([\d]{2,2}/[\d]{2,2}/[\d]{4,4} [\d]{2,2}:[\d]{2,2}:[\d]{2,2})`)
+	dur, e := time.ParseDuration(durationStr)
+	if e != nil {
+		m := timerangePtn.FindStringSubmatch(durationStr)
+		if len(m) != 3 {
+			log.Printf("ERROR Can not parse duration. Set default to 15m ago - %v", e)
+			dur, _ = time.ParseDuration("15m")
+		} else {
+			start, _ = time.Parse(AUTimeLayout, m[1] + " " + tz )
+			end, _ = time.Parse(AUTimeLayout, m[2] + " " + tz)
+		}
+	} else {
+		end = time.Now()
+		start = end.Add(-1 * dur)
+	}
+	log.Printf("Time range: %s - %s\n",start.Format(AUTimeLayout), end.Format(AUTimeLayout))
+	return start, end
+}
+
+//SearchLog -
+func SearchLog(keyword string, o *strings.Builder, sortorder, duration, tz string) (int) {
+	keyword = strings.TrimSpace(keyword)
+	tokens := strings.Split(keyword, " & ")
+	_l := len(tokens)
+
+	start, end := ParseTimeRange(duration, tz)
+
+	q := fmt.Sprintf("SELECT id, timestamp, datelog, host, application, logfile, message from log WHERE ((timestamp > %d) AND (timestamp < %d)) AND ", start.UnixNano(), end.UnixNano())
+
+	for i, t := range(tokens) {
+		if i == _l - 1 {
+			q = fmt.Sprintf("%s (host LIKE '%%%s%%' OR application LIKE '%%%s%%' OR logfile LIKE '%%%s%%' OR message LIKE '%%%s%%') ORDER BY timestamp %s;", q, t, t, t, t, sortorder)
+		} else {
+			q = fmt.Sprintf("%s (host LIKE '%%%s%%' OR application LIKE '%%%s%%' OR logfile LIKE '%%%s%%' OR message LIKE '%%%s%%') AND ", q, t, t, t, t)
+		}
+	}
+	return DoSQLSearch(q, o)
 }
 
 //HandleRequests -
@@ -331,6 +355,7 @@ func HandleRequests() {
 	router.HandleFunc("/auth/google/login", OauthGoogleLogin)
 	router.HandleFunc("/auth/google/callback", OauthGoogleCallback)
 	router.Handle("/searchlog", isOauthAuthorized(ProcessSearchLog))
+	router.Handle("/searchlogbyid/{id:[0-9]+}", isOauthAuthorized(ProcessSearchLogByID))
 
 	router.Handle("/", isAuthorized(homePage)).Methods("GET")
 	router.Handle("/run/{CommandName}", isAuthorized(ProcessCommand)).Methods("GET")
