@@ -66,8 +66,9 @@ func main() {
 		}
 	}
 
+	seek := tail.SeekInfo{Offset: 0, Whence: 0}
 	tailCfg := tail.Config{
-		// Location:    seek,
+		Location:    &seek,
 		ReOpen:      *tailFollow,
 		MustExist:   false,
 		Poll:        *poll,

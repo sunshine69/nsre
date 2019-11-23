@@ -361,12 +361,23 @@ func HandleRequests() {
 	router.Handle("/run/{CommandName}", isAuthorized(ProcessCommand)).Methods("GET")
 	router.Handle("/log", isAuthorized(ProcessLog)).Methods("POST")
 
+	router.Handle("/log", isAuthorized(ProcessLog)).Methods("POST")
+
+	srv := &http.Server{
+        Addr:  fmt.Sprintf("%s:%d", Config.Serverdomain, Config.Port),
+        // Good practice to set timeouts to avoid Slowloris attacks.
+        WriteTimeout: time.Second * 15,
+        ReadTimeout:  time.Second * 15,
+        IdleTimeout:  time.Second * 60,
+        Handler: router, // Pass our instance of gorilla/mux in.
+    }
+
 	if Config.Sslkey != "" {
 		log.Printf("Start SSL/TLS server on port %d\n", Config.Port)
-		log.Fatal(http.ListenAndServeTLS(fmt.Sprintf(":%d", Config.Port), Config.Sslcert, Config.Sslkey, router))
+		log.Fatal(srv.ListenAndServeTLS(Config.Sslcert, Config.Sslkey))
 	} else {
 		log.Printf("Start server on port %d\n", Config.Port)
-		log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", Config.Port), router))
+		log.Fatal(srv.ListenAndServe())
 	}
 
 }

@@ -51,17 +51,18 @@ func TailOneGlob(cfg *TailLogConfig, wg *sync.WaitGroup, globPtn string) {
 //TailOnePath -
 func TailOnePath(cfg *TailLogConfig, wg *sync.WaitGroup, logFile string) {
 	log.Printf("Start tailing %s\n", logFile)
-	t, e := tail.TailFile(logFile, cfg.TailConfig)
-	if e != nil {
-		log.Fatalf("Can not tail file - %v\n", e)
-	}
 	// offset − This is the position of the read/write pointer within the file.
 	// whence − This is optional and defaults to 0 which means absolute file positioning, other values are 1 which means seek relative to the current position and 2 means seek relative to the file's end.
 	// seek := &tail.SeekInfo{Offset: 0, Whence: 0}
 	// cfg.TailConfig.Location = seek
-	previousPos := LoadTailPosition(t, cfg)
+	previousPos := LoadTailPosition(logFile, cfg)
 	seek := &tail.SeekInfo{Offset: previousPos, Whence: 0}
 	cfg.TailConfig.Location = seek
+
+	t, e := tail.TailFile(logFile, cfg.TailConfig)
+	if e != nil {
+		log.Fatalf("Can not tail file - %v\n", e)
+	}
 
 	if cfg.TailConfig.Follow {
 		c := make(chan os.Signal, 4)
@@ -119,8 +120,8 @@ func SaveTailPosition(t *tail.Tail, cfg *TailLogConfig) {
 }
 
 //LoadTailPosition -
-func LoadTailPosition(t *tail.Tail, cfg *TailLogConfig) (int64) {
-	filename := filepath.Join(os.Getenv("HOME"), "taillog-" + CreateHash(cfg.Name + t.Filename))
+func LoadTailPosition(tailFileName string, cfg *TailLogConfig) (int64) {
+	filename := filepath.Join(os.Getenv("HOME"), "taillog-" + CreateHash(cfg.Name + tailFileName))
 	data, e := ioutil.ReadFile(filename)
 	if e != nil {
 		log.Printf("WARN - Can not read previous pos. Will set seek to 0 - %s\n", e)
@@ -132,7 +133,7 @@ func LoadTailPosition(t *tail.Tail, cfg *TailLogConfig) (int64) {
 		log.Printf("WARN - Can not parse int previous pos. Will set seek to 0 - %s\n", e)
 		return 0
 	}
-	log.Printf("INFO - Loaded previous file pos %d from %s. To set from beginnng remove the file\n", out, filename)
+	log.Printf("INFO - Loaded previous file pos %d from %s. To set from begining remove the file\n", out, filename)
 	return out
 }
 
