@@ -5,6 +5,7 @@ go 1.13
 require (
 	github.com/bvinc/go-sqlite-lite v0.6.1
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
+	github.com/gorilla/handlers v1.4.2
 	github.com/gorilla/mux v1.7.3
 	github.com/gorilla/sessions v1.2.0
 	github.com/json-iterator/go v1.1.8
