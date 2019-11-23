@@ -30,6 +30,24 @@ type TailLogConfig struct {
 	TailConfig tail.Config
 }
 
+//TailOneGlob -
+func TailOneGlob(cfg *TailLogConfig, wg *sync.WaitGroup, globPtn string) {
+	filesPath, e := filepath.Glob(globPtn)
+	if e != nil {
+		log.Printf("ERROR parsing glob pattern - %v\n", e)
+		wg.Done()
+		return
+	}
+	if len(filesPath) == 0 {
+		log.Printf("INFO parsing glob pattern return no files\n")
+		wg.Done()
+		return
+	}
+	for _, _logFile := range(filesPath) {
+		go TailOnePath(cfg, wg, _logFile)
+	}
+}
+
 //TailOnePath -
 func TailOnePath(cfg *TailLogConfig, wg *sync.WaitGroup, logFile string) {
 	log.Printf("Start tailing %s\n", logFile)
@@ -81,7 +99,7 @@ func TestTailLog(cfg tail.Config, logFile string) {
 func TailLog(cfg *TailLogConfig, wg *sync.WaitGroup){
 	for _, logFile := range(cfg.Paths) {
 		wg.Add(1)
-		go TailOnePath(cfg, wg, logFile)
+		TailOneGlob(cfg, wg, logFile)
 	}
 	wg.Done()
 }
