@@ -294,7 +294,7 @@ func DoSQLSearch(q string, o *strings.Builder) (int) {
 
 		line := fmt.Sprintf(`
 		<tr title="%s">
-			<td><a href="/searchlogbyid/%d">%s</a></td>
+			<td title="filter similar records around this time"><a href="/searchlogbyid/%d">%s</a></td>
 			<td>%s</td>
 			<td>%s</td>
 			<td>%s</td>
