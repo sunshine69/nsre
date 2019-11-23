@@ -359,12 +359,20 @@ func HandleRequests() {
 
 	router.Handle("/", isAuthorized(homePage)).Methods("GET")
 	router.Handle("/run/{CommandName}", isAuthorized(ProcessCommand)).Methods("GET")
-	router.Handle("/log", isAuthorized(ProcessLog)).Methods("POST")
 
-	router.Handle("/log", isAuthorized(ProcessLog)).Methods("POST")
+	if Config.JwtKey == "" {
+		log.Printf("WARNING WARNING - JWTKEY is not set. Log server will allow anyone to put log in\n")
+		router.HandleFunc("/log/{idx_name}/{type_name}/{unique_id}", ProcessLog).Methods("POST")
+		router.HandleFunc("/log/{idx_name}/{type_name}", ProcessLog).Methods("POST")
+		router.HandleFunc("/log", ProcessLog).Methods("POST")
+	} else{
+		router.Handle("/log/{idx_name}/{type_name}/{unique_id}", isAuthorized(ProcessLog)).Methods("POST")
+		router.Handle("/log/{idx_name}/{type_name}", isAuthorized(ProcessLog)).Methods("POST")
+		router.Handle("/log", isAuthorized(ProcessLog)).Methods("POST")
+	}
 
 	srv := &http.Server{
-        Addr:  fmt.Sprintf("%s:%d", Config.Serverdomain, Config.Port),
+        Addr:  fmt.Sprintf(":%d", Config.Port),
         // Good practice to set timeouts to avoid Slowloris attacks.
         WriteTimeout: time.Second * 15,
         ReadTimeout:  time.Second * 15,

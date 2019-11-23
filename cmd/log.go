@@ -160,13 +160,13 @@ func filterPassword(text string, passPtn *regexp.Regexp) (string) {
 }
 
 //SendLine -
-func SendLine(timeParsed time.Time, hostStr, appNameStr, logFile, msgStr string, passPtn *regexp.Regexp) (bool) {
+func SendLine(timeHarvest, timeParsed time.Time, hostStr, appNameStr, logFile, msgStr string, passPtn *regexp.Regexp) (bool) {
 	IsOK := true
 	message := filterPassword(msgStr, passPtn)
 	// message = DecodeJenkinsConsoleNote(message)
 
 	logData := LogData{
-		Timestamp: time.Now().UnixNano(),
+		Timestamp: timeHarvest.UnixNano(),
 		Datelog: timeParsed.UnixNano(),
 		Host: hostStr,
 		Application: appNameStr,
@@ -250,7 +250,7 @@ func ProcessTailLines(cfg *TailLogConfig, tail *tail.Tail) {
 			// log.Printf("EOF reached. Flush stack\n")
 
 			for {
-				if SendLine(timeParsed, hostStr, appNameStr, tail.Filename, msgStr, passPtn) { break }
+				if SendLine(line.Time, timeParsed, hostStr, appNameStr, tail.Filename, msgStr, passPtn) { break }
 				time.Sleep(15 * time.Second)
 			}
 		}
@@ -266,7 +266,7 @@ func ProcessTailLines(cfg *TailLogConfig, tail *tail.Tail) {
 				msgStr := strings.Join(lineStack, "\n")
 				lineStack = lineStack[:0]
 				for {
-					if SendLine(timeParsed, hostStr, appNameStr, tail.Filename, msgStr, passPtn) {break}
+					if SendLine(line.Time, timeParsed, hostStr, appNameStr, tail.Filename, msgStr, passPtn) {break}
 					time.Sleep(15 * time.Second)
 				}
 			}
@@ -281,7 +281,7 @@ func ProcessTailLines(cfg *TailLogConfig, tail *tail.Tail) {
 					log.Fatalf("ERROR Fail to parse time %v\n", e)
 				}
 			} else {
-				timeParsed = time.Now()
+				timeParsed = line.Time
 			}
 
 			match1 := linePtn.FindStringSubmatch(line.Text)
