@@ -15,7 +15,6 @@ import (
 	"github.com/gorilla/mux"
 	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/json-iterator/go"
-	"github.com/gorilla/handlers"
 )
 
 func isAuthorized(endpoint func(http.ResponseWriter, *http.Request)) http.Handler {
@@ -378,7 +377,7 @@ func HandleRequests() {
         WriteTimeout: time.Second * 15,
         ReadTimeout:  time.Second * 15,
         IdleTimeout:  time.Second * 60,
-        Handler: handlers.CompressHandler(router), // Pass our instance of gorilla/mux in.
+        Handler: router, // Pass our instance of gorilla/mux in.
     }
 
 	if Config.Sslkey != "" {
