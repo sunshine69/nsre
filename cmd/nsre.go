@@ -155,9 +155,8 @@ func ProcessSearchLogByID(w http.ResponseWriter, r *http.Request) {
 
 	var output strings.Builder
 	c := DoSQLSearch(q, &output)
-	//Load template and call search function
-	tStringb, _ := ioutil.ReadFile("templates/searchpage.go.html")
-	tString := string(tStringb)
+
+	tString := LoadTemplate("templates/searchpage.go.html")
 
 	session.Save(r, w)
 
@@ -175,11 +174,22 @@ func ProcessSearchLogByID(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+//LoadTemplate - Run this command to create the bindata.go
+// go-bindata -fs -pkg cmd -o cmd/bindata.go -nomemcopy templates
+// go get -u github.com/go-bindata/go-bindata/...
+func LoadTemplate(tFilePath string) (string) {
+	tStringb, e := Asset(tFilePath)
+	if e != nil {
+		log.Fatalf("ERROR - Can not load template %s - %v\n", tFilePath, e)
+	}
+	return string(tStringb)
+}
+
 //ProcessSearchLog -
 func ProcessSearchLog(w http.ResponseWriter, r *http.Request) {
 	session, _ := SessionStore.Get(r, "auth-session")
-	tStringb, _ := ioutil.ReadFile("templates/searchpage.go.html")
-	tString := string(tStringb)
+
+	tString := LoadTemplate("templates/searchpage.go.html")
 	var output strings.Builder
 
 	switch r.Method {
