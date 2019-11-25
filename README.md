@@ -86,7 +86,12 @@ part (where the actual command is run).
 At the client (the nagios server which runs an active check) run
 
 ```
+# This will run and return a text output, first line is exit code, and the rest
+# the stdout of the remote command. Used for debugging
 nsre -c config_file -m client -cmd <command_name>
+# This will return what nagios expects it to return - a exit code to show the
+# error or OK and output as it is. Use as nagios plugin.
+nsre -c config_file -m nagios -cmd <command_name>
 ```
 
 It does not take any options. You need to define all options in each command
