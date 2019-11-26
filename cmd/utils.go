@@ -21,9 +21,16 @@ const (
 )
 
 //NsToTime -
-func NsToTime(ns int64) time.Time  {
+func NsToTime(ns int64) time.Time {
 	secs := ns/nanosPerSecond
 	nanos := ns - secs * nanosPerSecond
+	return time.Unix(secs, nanos)
+}
+
+//MsToTime -
+func MsToTime(ms int64) time.Time {
+	secs := ms/millisPerSecond
+	nanos := (ms - secs * millisPerSecond) * nanosPerMillisecond
 	return time.Unix(secs, nanos)
 }
 
