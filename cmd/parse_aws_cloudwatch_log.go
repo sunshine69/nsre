@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"fmt"
 	"time"
 	"regexp"
 	"log"
