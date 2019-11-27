@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"os/exec"
 	"strconv"
 	"fmt"
 	"golang.org/x/oauth2/google"
