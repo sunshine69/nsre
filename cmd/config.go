@@ -186,7 +186,7 @@ var SessionStore *sessions.CookieStore
 var ServerProtocol string
 
 //CurrentYear - CurrentZone - Used for timeadjust
-var CurrentYear, CurrentZone, Version string
+var CurrentYear, CurrentZone string
 
 //LoadConfig -
 func LoadConfig(fPath string) (e error) {
@@ -199,14 +199,6 @@ func LoadConfig(fPath string) (e error) {
     _t := time.Now()
     CurrentYear = strconv.FormatInt(int64(_t.Year()), 10)
     CurrentZone, _ = _t.Zone()
-
-    // cmd := exec.Command("git", "rev-parse", "--short", "HEAD")
-	// _Version, e := cmd.CombinedOutput()
-	// if e != nil {
-	// 	log.Fatal(e)
-    // }
-    // Version = string(_Version)
-    Version = "v0.8"
 
     if Config.Sslkey == "" {
         ServerProtocol = "http"
