@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"time"
 	"path/filepath"
 	"github.com/nxadm/tail"
@@ -42,10 +43,15 @@ func main() {
 	sslcert := flag.String("sslcert", "", "SSL certificate path")
 	sslkey := flag.String("sslkey", "", "SSL key path")
 	poll := flag.Bool("poll", false, "Use polling file for tail. Usefull for windows.")
+	version := flag.Bool("version", false, "Get build version")
 
 	flag.Parse()
 
 	e := cmd.LoadConfig(*configFile)
+	if *version {
+		fmt.Println(cmd.Version)
+		os.Exit(0)
+	}
 
 	var generateDefaultConfig = func() (error) {
 		return cmd.GenerateDefaultConfig(

@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"os/exec"
 	"strconv"
 	"fmt"
 	"golang.org/x/oauth2/google"
@@ -186,7 +187,7 @@ var SessionStore *sessions.CookieStore
 var ServerProtocol string
 
 //CurrentYear - CurrentZone - Used for timeadjust
-var CurrentYear, CurrentZone string
+var CurrentYear, CurrentZone, Version string
 
 //LoadConfig -
 func LoadConfig(fPath string) (e error) {
@@ -199,6 +200,13 @@ func LoadConfig(fPath string) (e error) {
     _t := time.Now()
     CurrentYear = strconv.FormatInt(int64(_t.Year()), 10)
     CurrentZone, _ = _t.Zone()
+
+    cmd := exec.Command("git", "rev-parse", "--short", "HEAD")
+	_Version, e := cmd.CombinedOutput()
+	if e != nil {
+		log.Fatal(e)
+    }
+    Version = string(_Version)
 
     if Config.Sslkey == "" {
         ServerProtocol = "http"
@@ -215,5 +223,11 @@ func LoadConfig(fPath string) (e error) {
         Endpoint:     google.Endpoint,
     }
     SessionStore = sessions.NewCookieStore([]byte(Config.Sessionkey))
+    SessionStore.Options = &sessions.Options{
+		Path:     "/",
+		MaxAge:   3600 * 4,
+		HttpOnly: true,
+    }
+
     return e
 }

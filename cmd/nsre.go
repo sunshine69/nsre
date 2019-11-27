@@ -115,20 +115,28 @@ func ProcessCommand(w http.ResponseWriter, r *http.Request) {
 //ProcessSearchLogByID - Take an ID and search for record surrounding including the current rec with time span of 10 minutes
 func ProcessSearchLogByID(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	session, _ := SessionStore.Get(r, "auth-session")
-	var sortorder, duration, tz interface{}
-	if sortorder = session.Values["sortorder"]; sortorder == nil {
-		sortorder = "checked"
-		session.Values["sortorder"] = sortorder.(string)
+	session, e := SessionStore.Get(r, "auth-session")
+	if e != nil {
+		log.Fatalf("Can not get session - %v\n", e)
 	}
-	if duration = session.Values["duration"]; duration == nil {
+	var sortorder, duration, tz interface{}
+	sortorder = session.Values["sortorder"]
+	if sortorder == nil {
+		sortorder = "unchecked"
+	}
+
+	duration = session.Values["duration"]
+	if duration == nil {
 		duration = "15m"
 		session.Values["duration"] = duration.(string)
 	}
-	if tz = session.Values["tz"]; tz == nil {
+
+	tz = session.Values["tz"]
+	if tz == nil {
 		tz = "AEST"
 		session.Values["tz"] = tz.(string)
 	}
+
 	id := vars["id"]
 	q := `SELECT timestamp, host, application from log WHERE id = '` + id + `'`
 	conn := GetDBConn()
@@ -148,20 +156,28 @@ func ProcessSearchLogByID(w http.ResponseWriter, r *http.Request) {
 	_start, _end := ParseTimeRange(duration.(string), tz.(string))
 	halfDuration := _end.Sub(_start) / 2
 
+	//Limit the filter time range to maximum 2 hours
+	if halfDuration.Hours() > 1 {
+		halfDuration, _ = time.ParseDuration("1h")
+	}
+
 	start := rowTime.Add(-1 * halfDuration)
 	end := rowTime.Add(halfDuration)
 	log.Printf("Time range: %s - %s\n",start.Format(AUTimeLayout), end.Format(AUTimeLayout)  )
-	q = fmt.Sprintf("SELECT id, timestamp, datelog, host, application, logfile, message from log WHERE ((timestamp > %d) AND (timestamp < %d)) AND host = '%s' AND application = '%s'", start.UnixNano(), end.UnixNano(), host, application)
+	q = fmt.Sprintf("SELECT id, timestamp, datelog, host, application, logfile, message from log WHERE ((timestamp > %d) AND (timestamp < %d)) AND host = '%s' AND application = '%s' ORDER BY timestamp ASC", start.UnixNano(), end.UnixNano(), host, application)
 
 	var output strings.Builder
 	c := DoSQLSearch(q, &output)
 
 	tString := LoadTemplate("templates/searchpage.go.html")
 
-	session.Save(r, w)
-
 	t := template.Must(template.New("webgui").Parse(tString))
-	e := t.Execute(w, map[string]string{
+
+	if e := session.Save(r, w); e != nil {
+        http.Error(w, e.Error(), http.StatusInternalServerError)
+        return
+    }
+	e = t.Execute(w, map[string]string{
 		"count": strconv.FormatInt(int64(c), 10),
 		"output": output.String(),
 		"sortorder": sortorder.(string),
@@ -207,16 +223,18 @@ func ProcessSearchLog(w http.ResponseWriter, r *http.Request) {
 			tz = "AEST"
 			session.Values["tz"] = tz.(string)
 		}
-		session.Save(r, w)
 
 		t := template.Must(template.New("webgui").Parse(tString))
-		e := t.Execute(w, map[string]string{
+		if e := session.Save(r, w); e !=nil {
+			http.Error(w, e.Error(), http.StatusInternalServerError)
+			return
+		}
+		if e := t.Execute(w, map[string]string{
 			"sortorder": sortorder.(string),
 			"keyword": "",
 			"duration": duration.(string),
 			"tz": tz.(string),
-			})
-		if e != nil {
+			}); e != nil {
 			fmt.Printf("%v\n", e)
 		}
 
@@ -227,7 +245,7 @@ func ProcessSearchLog(w http.ResponseWriter, r *http.Request) {
 		var sortorderVal, checkedSort string
 		if len(sortorder) == 0 {
 			sortorderVal = "ASC"
-			checkedSort = ""
+			checkedSort = "unchecked"
 			session.Values["sortorder"] = checkedSort
 		} else {
 			sortorderVal = "DESC"
@@ -238,22 +256,33 @@ func ProcessSearchLog(w http.ResponseWriter, r *http.Request) {
 		tz := r.FormValue("tz")
 		session.Values["duration"] = duration
 		session.Values["tz"] = tz
-		session.Save(r,w)
+		if e := session.Save(r, w); e !=nil {
+			http.Error(w, e.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		isSaveValues := r.Form["save_values"]
+		fmt.Printf("%v\n", isSaveValues)
+		if isSaveValues != nil {
+			fmt.Fprintf(w, "Values saved. Click Back to return")
+			return
+		}
 
 		c := SearchLog(keyword, &output, sortorderVal, duration, tz)
 		t := template.Must(template.New("webgui").Parse(tString))
-		e := t.Execute(w, map[string]string{
+
+		if e := t.Execute(w, map[string]string{
 			"count": strconv.FormatInt(int64(c), 10),
 			"output": output.String(),
 			"sortorder": checkedSort,
 			"keyword": keyword,
 			"duration": duration,
 			"tz": tz,
-			})
-		if e != nil {
+			}); e != nil {
 			fmt.Printf("%v\n", e)
 		}
 	}
+	fmt.Println(session.Values["sortorder"])
 }
 
 //DoSQLSearch - Execute the search in the database. Return the record counts and fill the string builder object.

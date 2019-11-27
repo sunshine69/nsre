@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"github.com/gorilla/sessions"
 	"bytes"
 	"net/http"
 	"fmt"
@@ -67,11 +66,6 @@ func OauthGoogleCallback(w http.ResponseWriter, r *http.Request) {
     if err != nil {
         http.Error(w, err.Error(), http.StatusInternalServerError)
         return
-	}
-	session.Options = &sessions.Options{
-		Path:     "/",
-		MaxAge:   3600 * 4,
-		HttpOnly: true,
 	}
 
 	session.Values["oauthstate"] = oauthState.Value
