@@ -1,6 +1,8 @@
 package main
 
 import (
+	"syscall"
+	"os/signal"
 	"fmt"
 	"time"
 	"path/filepath"
@@ -12,9 +14,8 @@ import (
 	"github.com/sunshine69/nsre/cmd"
 )
 
-func startTailServer(tailCfg tail.Config) {
+func startTailServer(tailCfg tail.Config, wg *sync.WaitGroup, c chan struct{}) {
 	if len(cmd.Config.Logfiles) == 0 { return }
-	var wg sync.WaitGroup
 	for _, _logFile := range(cmd.Config.Logfiles) {
 		if len(_logFile.Paths) == 0 { continue }
 		_tailLogConfig := cmd.TailLogConfig{
@@ -23,9 +24,9 @@ func startTailServer(tailCfg tail.Config) {
 		}
 		log.Printf("Spawn tailling process ...\n")
 		wg.Add(1)
-		go cmd.TailLog(&_tailLogConfig, &wg)
+		go cmd.TailLog(&_tailLogConfig, wg, c)
 	}
-	wg.Wait()
+	wg.Done()
 }
 
 func main() {
@@ -83,19 +84,44 @@ func main() {
 		MaxLineSize: 0,
 	}
 
+	var wg sync.WaitGroup
+	c := make(chan os.Signal, 4)
+	signal.Notify(c,
+		syscall.SIGHUP,
+		syscall.SIGINT,
+		syscall.SIGTERM,
+		syscall.SIGQUIT)
+
 	switch *mode {
 	case "server":
-		cmd.StartServer()
+		go cmd.StartServer()
+		s := <-c
+		log.Printf("%s captured. Do cleaning up\n", s.String())
 	case "client":
 		cmd.RunCommand(*cmdName)
 	case "nagios":
 		cmd.RunNagiosCheckCommand(*cmdName)
 	case "tail":
-		startTailServer(tailCfg)
+		wg.Add(1)
+		exitCh := make(chan struct{})
+		go startTailServer(tailCfg, &wg, exitCh)
+		s := <-c
+		log.Printf("%s captured. Do cleaning up\n", s.String())
+		exitCh <- struct{}{}
+		wg.Wait()
 	case "tailserver":
 		go cmd.StartServer()
 		time.Sleep(2 * time.Second)
-		startTailServer(tailCfg)
+		exitCh1 := make(chan struct{})
+		exitCh2 := make(chan struct{})
+		wg.Add(1)
+		go cmd.StartAllAWSCloudwatchLogPolling(&wg, exitCh1)
+		wg.Add(1)
+		startTailServer(tailCfg, &wg, exitCh2)
+		s := <-c
+		log.Printf("%s captured. Do cleaning up\n", s.String())
+		exitCh1 <- struct{}{}
+		exitCh2 <- struct{}{}
 	case "reset", "setup":
 		files, _ := filepath.Glob(filepath.Join(os.Getenv("HOME"), "taillog*"))
 		for _, f := range(files) {

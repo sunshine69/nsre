@@ -49,6 +49,17 @@ type AppConfig struct { //Why do I have to tag every field! Because yaml driver 
     AppGoogleClientSecret string
     Sessionkey string
     AuthorizedDomain map[string]bool
+    AWSLogs []AWSLogConfig
+}
+
+//AWSLogConfig -
+type AWSLogConfig struct {
+    LoggroupName string
+    StreamPrefix string
+    FilterPtn string
+    Profile string
+    Region string
+    Period string
 }
 
 //Config - Global

@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"os"
 	"regexp"
 	"log"
 	// "fmt"
@@ -12,6 +13,7 @@ import (
 	"encoding/hex"
 	"crypto/md5"
 	"time"
+	"github.com/aws/aws-sdk-go/service/cloudwatchlogs"
 )
 
 //Time handling
@@ -54,7 +56,7 @@ func ParseTimeRange(durationStr, tz string) (time.Time, time.Time) {
 		end = time.Now()
 		start = end.Add(-1 * dur)
 	}
-	log.Printf("Time range: %s - %s\n",start.Format(AUTimeLayout), end.Format(AUTimeLayout))
+	// log.Printf("Time range: %s - %s\n",start.Format(AUTimeLayout), end.Format(AUTimeLayout))
 	return start, end
 }
 
@@ -127,4 +129,26 @@ func CheckAuthorizedDomain(email string) (bool) {
 	_tmp := strings.Split(email, "@")
 	ok, e := Config.AuthorizedDomain[_tmp[1]]
 	return ok && e
+}
+
+//SendAWSLogEvents - Store the last End time in the event list
+func SendAWSLogEvents(evts []*cloudwatchlogs.FilteredLogEvent, appNameStr string, timeMark int64) (int64) {
+	evtCount := len(evts)
+	log.Printf("Events count: %d\n", evtCount)
+	if evtCount == 0 { return 0 }
+	passPtn := regexp.MustCompile(Config.PasswordFilterPattern)
+	var timeParsed time.Time
+
+	hostStr, _ := os.Hostname()
+
+	for idx, data := range(evts) {
+		//Start include the previous record thus skip it except from beginning
+		if (timeMark > 0) && (idx == 0) { continue }
+		// log.Printf("Send ID: %s - time %d\n", *data.EventId, *data.Timestamp)
+		timeHarvest := time.Now()
+		timeParsed = MsToTime(*data.Timestamp)
+		logFile, msgStr :=  data.LogStreamName, data.Message
+		SendLine(timeHarvest, timeParsed, hostStr, appNameStr, *logFile, *msgStr, passPtn)
+	}
+	return timeParsed.UnixNano() / NanosPerMillisecond
 }

@@ -12,8 +12,6 @@ import (
 	"net/http"
 	"time"
 	"regexp"
-	"syscall"
-	"os/signal"
 	"os"
 	"log"
 	"fmt"
@@ -31,7 +29,7 @@ type TailLogConfig struct {
 }
 
 //TailOneGlob -
-func TailOneGlob(cfg *TailLogConfig, wg *sync.WaitGroup, globPtn string) {
+func TailOneGlob(cfg *TailLogConfig, wg *sync.WaitGroup, globPtn string, c chan struct{}) {
 	filesPath, e := filepath.Glob(globPtn)
 	if e != nil {
 		log.Printf("ERROR parsing glob pattern - %v\n", e)
@@ -44,12 +42,12 @@ func TailOneGlob(cfg *TailLogConfig, wg *sync.WaitGroup, globPtn string) {
 		return
 	}
 	for _, _logFile := range(filesPath) {
-		go TailOnePath(cfg, wg, _logFile)
+		go TailOnePath(cfg, wg, _logFile, c)
 	}
 }
 
 //TailOnePath -
-func TailOnePath(cfg *TailLogConfig, wg *sync.WaitGroup, logFile string) {
+func TailOnePath(cfg *TailLogConfig, wg *sync.WaitGroup, logFile string, c chan struct{}) {
 	log.Printf("Start tailing %s\n", logFile)
 	// offset − This is the position of the read/write pointer within the file.
 	// whence − This is optional and defaults to 0 which means absolute file positioning, other values are 1 which means seek relative to the current position and 2 means seek relative to the file's end.
@@ -65,15 +63,9 @@ func TailOnePath(cfg *TailLogConfig, wg *sync.WaitGroup, logFile string) {
 	}
 
 	if cfg.TailConfig.Follow {
-		c := make(chan os.Signal, 4)
-		signal.Notify(c,
-			syscall.SIGHUP,
-			syscall.SIGINT,
-			syscall.SIGTERM,
-			syscall.SIGQUIT)
 		go ProcessTailLines(cfg, t)
-		s := <-c
-		log.Printf("%s captured. Do cleaning up\n", s.String())
+		<-c
+		log.Printf("Signal captured. Do cleaning up\n")
 		SaveTailPosition(t, cfg)
 		t.Stop()
 		t.Cleanup()
@@ -97,10 +89,10 @@ func TestTailLog(cfg tail.Config, logFile string) {
 }
 
 //TailLog -
-func TailLog(cfg *TailLogConfig, wg *sync.WaitGroup){
+func TailLog(cfg *TailLogConfig, wg *sync.WaitGroup, c chan struct{}){
 	for _, logFile := range(cfg.Paths) {
 		wg.Add(1)
-		TailOneGlob(cfg, wg, logFile)
+		TailOneGlob(cfg, wg, logFile, c)
 	}
 	wg.Done()
 }
