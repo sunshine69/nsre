@@ -201,12 +201,13 @@ func LoadConfig(fPath string) (e error) {
     CurrentYear = strconv.FormatInt(int64(_t.Year()), 10)
     CurrentZone, _ = _t.Zone()
 
-    cmd := exec.Command("git", "rev-parse", "--short", "HEAD")
-	_Version, e := cmd.CombinedOutput()
-	if e != nil {
-		log.Fatal(e)
-    }
-    Version = string(_Version)
+    // cmd := exec.Command("git", "rev-parse", "--short", "HEAD")
+	// _Version, e := cmd.CombinedOutput()
+	// if e != nil {
+	// 	log.Fatal(e)
+    // }
+    // Version = string(_Version)
+    Version = "v0.8"
 
     if Config.Sslkey == "" {
         ServerProtocol = "http"
