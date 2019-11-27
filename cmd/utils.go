@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"regexp"
 	"log"
 	// "fmt"
 	// "io"
@@ -15,23 +16,45 @@ import (
 
 //Time handling
 const (
-	millisPerSecond     = int64(time.Second / time.Millisecond)
-	nanosPerMillisecond = int64(time.Millisecond / time.Nanosecond)
-	nanosPerSecond      = int64(time.Second / time.Nanosecond)
+	MillisPerSecond     = int64(time.Second / time.Millisecond)
+	NanosPerMillisecond = int64(time.Millisecond / time.Nanosecond)
+	NanosPerSecond      = int64(time.Second / time.Nanosecond)
 )
 
 //NsToTime -
 func NsToTime(ns int64) time.Time {
-	secs := ns/nanosPerSecond
-	nanos := ns - secs * nanosPerSecond
+	secs := ns/NanosPerSecond
+	nanos := ns - secs * NanosPerSecond
 	return time.Unix(secs, nanos)
 }
 
 //MsToTime -
 func MsToTime(ms int64) time.Time {
-	secs := ms/millisPerSecond
-	nanos := (ms - secs * millisPerSecond) * nanosPerMillisecond
+	secs := ms/MillisPerSecond
+	nanos := (ms - secs * MillisPerSecond) * NanosPerMillisecond
 	return time.Unix(secs, nanos)
+}
+
+//ParseTimeRange -
+func ParseTimeRange(durationStr, tz string) (time.Time, time.Time) {
+	var start, end time.Time
+	timerangePtn := regexp.MustCompile(`([\d]{2,2}/[\d]{2,2}/[\d]{4,4} [\d]{2,2}:[\d]{2,2}:[\d]{2,2}) - ([\d]{2,2}/[\d]{2,2}/[\d]{4,4} [\d]{2,2}:[\d]{2,2}:[\d]{2,2})`)
+	dur, e := time.ParseDuration(durationStr)
+	if e != nil {
+		m := timerangePtn.FindStringSubmatch(durationStr)
+		if len(m) != 3 {
+			log.Printf("ERROR Can not parse duration. Set default to 15m ago - %v", e)
+			dur, _ = time.ParseDuration("15m")
+		} else {
+			start, _ = time.Parse(AUTimeLayout, m[1] + " " + tz )
+			end, _ = time.Parse(AUTimeLayout, m[2] + " " + tz)
+		}
+	} else {
+		end = time.Now()
+		start = end.Add(-1 * dur)
+	}
+	log.Printf("Time range: %s - %s\n",start.Format(AUTimeLayout), end.Format(AUTimeLayout))
+	return start, end
 }
 
 //CreateHash - md5

@@ -345,28 +345,6 @@ func DoSQLSearch(q string, o *strings.Builder) (int) {
 	return count
 }
 
-//ParseTimeRange -
-func ParseTimeRange(durationStr, tz string) (time.Time, time.Time) {
-	var start, end time.Time
-	timerangePtn := regexp.MustCompile(`([\d]{2,2}/[\d]{2,2}/[\d]{4,4} [\d]{2,2}:[\d]{2,2}:[\d]{2,2}) - ([\d]{2,2}/[\d]{2,2}/[\d]{4,4} [\d]{2,2}:[\d]{2,2}:[\d]{2,2})`)
-	dur, e := time.ParseDuration(durationStr)
-	if e != nil {
-		m := timerangePtn.FindStringSubmatch(durationStr)
-		if len(m) != 3 {
-			log.Printf("ERROR Can not parse duration. Set default to 15m ago - %v", e)
-			dur, _ = time.ParseDuration("15m")
-		} else {
-			start, _ = time.Parse(AUTimeLayout, m[1] + " " + tz )
-			end, _ = time.Parse(AUTimeLayout, m[2] + " " + tz)
-		}
-	} else {
-		end = time.Now()
-		start = end.Add(-1 * dur)
-	}
-	log.Printf("Time range: %s - %s\n",start.Format(AUTimeLayout), end.Format(AUTimeLayout))
-	return start, end
-}
-
 //SearchLog -
 func SearchLog(keyword string, o *strings.Builder, sortorder, duration, tz string) (int) {
 	keyword = strings.TrimSpace(keyword)
