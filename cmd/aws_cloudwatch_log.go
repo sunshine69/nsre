@@ -36,6 +36,7 @@ func StartAllAWSCloudwatchLogPolling(wg *sync.WaitGroup, c chan struct{}) {
 		wg.Add(1)
 		log.Printf("Start parsing aws log config %v\n", cfg)
 		go StartAWSCloudwatchLogPolling(&cfg, wg)
+		time.Sleep(5 * time.Second)
 	}
 	<-c
 	log.Printf("Signal captured. Do cleaning up\n")
