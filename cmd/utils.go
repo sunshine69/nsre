@@ -156,7 +156,7 @@ func SendAWSLogEvents(evts []*cloudwatchlogs.FilteredLogEvent, appNameStr string
 			if err != nil {
 				log.Printf("ERROR - can not insert data for logline - %v\n", err)
 			}
-		} else{
+		} else {
 			SendLine(timeHarvest, timeParsed, hostStr, appNameStr, *logFile, *msgStr)
 		}
 	}

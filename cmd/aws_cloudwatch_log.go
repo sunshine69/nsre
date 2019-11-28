@@ -52,9 +52,9 @@ func StartAWSCloudwatchLogOnePrefix(cfg *AWSLogConfig, cl *cloudwatchlogs.CloudW
 	if err != nil {
 		log.Fatal(err)
 	}
-	
+
 	if u.Hostname() == Config.Serverdomain {
-		conn := GetDBConn()
+		conn = GetDBConn()
 		defer conn.Close()
 	}
 
@@ -66,7 +66,8 @@ func StartAWSCloudwatchLogOnePrefix(cfg *AWSLogConfig, cl *cloudwatchlogs.CloudW
 		}
 		out, e := cl.FilterLogEvents(filterEvtInput)
 		if e != nil {
-			log.Fatalf("ERROR can not FilterLogEvent - %v\n", e)
+			log.Printf("ERROR can not FilterLogEvent. Maybe api throttling. Sleep 15 minutes - %v\n", e)
+			time.Sleep(15 * time.Minute)
 		}
 		events := out.Events
 		lastEndTime = SendAWSLogEvents(events, cfg.LoggroupName, lastEndTime, conn)
