@@ -147,14 +147,15 @@ func IsEOF(filename string, seek int64) (bool) {
 	return false
 }
 
-func filterPassword(text string, passPtn *regexp.Regexp) (string) {
+//FilterPassword -
+func FilterPassword(text string, passPtn *regexp.Regexp) (string) {
 	return passPtn.ReplaceAllString(text, "$1 DATA_FILTERED ")
 }
 
 //SendLine -
-func SendLine(timeHarvest, timeParsed time.Time, hostStr, appNameStr, logFile, msgStr string, passPtn *regexp.Regexp) (bool) {
+func SendLine(timeHarvest, timeParsed time.Time, hostStr, appNameStr, logFile, msgStr string) (bool) {
 	IsOK := true
-	message := filterPassword(msgStr, passPtn)
+	message := FilterPassword(msgStr, PasswordFilterPtn)
 	// message = DecodeJenkinsConsoleNote(message)
 
 	logData := LogData{
@@ -206,7 +207,6 @@ func ProcessTailLines(cfg *TailLogConfig, tail *tail.Tail) {
 	linePtnStr := strings.Join([]string{cfg.Timepattern, cfg.Pattern}, "" )
 	linePtn = regexp.MustCompile(linePtnStr)
 	multiLinePtn = regexp.MustCompile(cfg.Multilineptn)
-	passPtn := regexp.MustCompile(Config.PasswordFilterPattern)
 
 	if cfg.Timepattern != "" {
 		timePtn = regexp.MustCompile(cfg.Timepattern)
@@ -242,7 +242,7 @@ func ProcessTailLines(cfg *TailLogConfig, tail *tail.Tail) {
 			// log.Printf("EOF reached. Flush stack\n")
 
 			for {
-				if SendLine(line.Time, timeParsed, hostStr, appNameStr, tail.Filename, msgStr, passPtn) { break }
+				if SendLine(line.Time, timeParsed, hostStr, appNameStr, tail.Filename, msgStr) { break }
 				time.Sleep(15 * time.Second)
 			}
 		}
@@ -258,7 +258,7 @@ func ProcessTailLines(cfg *TailLogConfig, tail *tail.Tail) {
 				msgStr := strings.Join(lineStack, "\n")
 				lineStack = lineStack[:0]
 				for {
-					if SendLine(line.Time, timeParsed, hostStr, appNameStr, tail.Filename, msgStr, passPtn) {break}
+					if SendLine(line.Time, timeParsed, hostStr, appNameStr, tail.Filename, msgStr) {break}
 					time.Sleep(15 * time.Second)
 				}
 			}

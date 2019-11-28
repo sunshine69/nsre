@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"github.com/bvinc/go-sqlite-lite/sqlite3"
 	"os"
 	"regexp"
 	"log"
@@ -132,11 +133,11 @@ func CheckAuthorizedDomain(email string) (bool) {
 }
 
 //SendAWSLogEvents - Store the last End time in the event list
-func SendAWSLogEvents(evts []*cloudwatchlogs.FilteredLogEvent, appNameStr string, timeMark int64) (int64) {
+func SendAWSLogEvents(evts []*cloudwatchlogs.FilteredLogEvent, appNameStr string, timeMark int64, conn *sqlite3.Conn) (int64) {
 	evtCount := len(evts)
 	log.Printf("Events count: %d\n", evtCount)
 	if evtCount == 0 { return 0 }
-	passPtn := regexp.MustCompile(Config.PasswordFilterPattern)
+
 	var timeParsed time.Time
 
 	hostStr, _ := os.Hostname()
@@ -148,7 +149,16 @@ func SendAWSLogEvents(evts []*cloudwatchlogs.FilteredLogEvent, appNameStr string
 		timeHarvest := time.Now()
 		timeParsed = MsToTime(*data.Timestamp)
 		logFile, msgStr :=  data.LogStreamName, data.Message
-		SendLine(timeHarvest, timeParsed, hostStr, appNameStr, *logFile, *msgStr, passPtn)
+
+		if conn != nil {
+			message := FilterPassword(*msgStr, PasswordFilterPtn)
+			err := conn.Exec(`INSERT INTO log(timestamp, datelog, host, application, logfile, message) VALUES (?, ?, ?, ?, ?, ?)`, timeHarvest.UnixNano(), timeParsed.UnixNano(), hostStr, appNameStr, *logFile, message)
+			if err != nil {
+				log.Printf("ERROR - can not insert data for logline - %v\n", err)
+			}
+		} else{
+			SendLine(timeHarvest, timeParsed, hostStr, appNameStr, *logFile, *msgStr)
+		}
 	}
 	return timeParsed.UnixNano() / NanosPerMillisecond
 }

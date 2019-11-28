@@ -1,6 +1,7 @@
 package main
 
 import (
+	"io/ioutil"
 	"syscall"
 	"os/signal"
 	"fmt"
@@ -67,7 +68,15 @@ func main() {
 	}
 
 	if e != nil {
-		log.Printf("INFO Can not read config file. %v\nGenerating new one\n", e)
+		log.Printf("INFO Can not read config file. %v\nBack up and Generating new one\n", e)
+		content, e := ioutil.ReadFile(*configFile)
+		if e != nil {
+			log.Fatalf("ERROR can not read config for backup - %v\n", e)
+		} else {
+			if e := ioutil.WriteFile(*configFile + ".bak",[]byte(content) ,0600); e != nil {
+				log.Fatalf("ERROR writing backup config file %v\n", e)
+			}
+		}
 		if generateDefaultConfig() != nil {
 			log.Fatalf("ERROR can not generate config file %v\n", e)
 		}

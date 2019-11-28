@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"regexp"
 	"strconv"
 	"fmt"
 	"golang.org/x/oauth2/google"
@@ -55,7 +56,7 @@ type AppConfig struct { //Why do I have to tag every field! Because yaml driver 
 //AWSLogConfig -
 type AWSLogConfig struct {
     LoggroupName string
-    StreamPrefix string
+    StreamPrefix []string
     FilterPtn string
     Profile string
     Region string
@@ -199,6 +200,8 @@ var ServerProtocol string
 //CurrentYear - CurrentZone - Used for timeadjust
 var CurrentYear, CurrentZone string
 
+var PasswordFilterPtn *regexp.Regexp
+
 //LoadConfig -
 func LoadConfig(fPath string) (e error) {
     yamlStr, e := ioutil.ReadFile(fPath)
@@ -210,6 +213,9 @@ func LoadConfig(fPath string) (e error) {
     _t := time.Now()
     CurrentYear = strconv.FormatInt(int64(_t.Year()), 10)
     CurrentZone, _ = _t.Zone()
+
+    PasswordFilterPtn = regexp.MustCompile(Config.PasswordFilterPattern)
+    fmt.Printf("Password filter: %v\n", PasswordFilterPtn.String)
 
     if Config.Sslkey == "" {
         ServerProtocol = "http"

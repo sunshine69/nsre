@@ -1,8 +1,8 @@
 package cmd
 
 import (
-	"os/signal"
-
+	"github.com/bvinc/go-sqlite-lite/sqlite3"
+	"net/url"
 	"sync"
 	"time"
 	"github.com/aws/aws-sdk-go/aws"
@@ -28,8 +28,7 @@ func ParseAWSCloudWatchLogEvent(appNameStr string) {
 	if e := json.Unmarshal(buff, &awsLog); e != nil {
 		log.Fatalf("ERROR parsing awslog event data - %v\n", e)
 	}
-
-	SendAWSLogEvents(awsLog.Events, appNameStr, 0)
+	SendAWSLogEvents(awsLog.Events, appNameStr, 0, nil)
 }
 
 func StartAllAWSCloudwatchLogPolling(wg *sync.WaitGroup, c chan struct{}) {
@@ -40,8 +39,41 @@ func StartAllAWSCloudwatchLogPolling(wg *sync.WaitGroup, c chan struct{}) {
 	}
 	<-c
 	log.Printf("Signal captured. Do cleaning up\n")
-	signal.Reset()
 	wg.Done()
+}
+
+//StartAWSCloudwatchLogOnePrefix -
+func StartAWSCloudwatchLogOnePrefix(cfg *AWSLogConfig, cl *cloudwatchlogs.CloudWatchLogs, filterEvtInput *cloudwatchlogs.FilterLogEventsInput, sleepDuration time.Duration) {
+	var lastEndTime int64
+
+	var conn *sqlite3.Conn
+
+	u, err := url.Parse(Config.Serverurl)
+	if err != nil {
+		log.Fatal(err)
+	}
+	
+	if u.Hostname() == Config.Serverdomain {
+		conn := GetDBConn()
+		defer conn.Close()
+	}
+
+	for {
+		if lastEndTime != 0 {
+			filterEvtInput.SetStartTime(lastEndTime)
+			now := time.Now().UnixNano() / NanosPerMillisecond
+			filterEvtInput.SetEndTime(now)
+		}
+		out, e := cl.FilterLogEvents(filterEvtInput)
+		if e != nil {
+			log.Fatalf("ERROR can not FilterLogEvent - %v\n", e)
+		}
+		events := out.Events
+		lastEndTime = SendAWSLogEvents(events, cfg.LoggroupName, lastEndTime, conn)
+
+		log.Printf("Sleep %v\n", sleepDuration)
+		time.Sleep(sleepDuration)
+	}
 }
 
 //StartAWSCloudwatchLogPolling -
@@ -67,33 +99,15 @@ func StartAWSCloudwatchLogPolling(cfg *AWSLogConfig, wg *sync.WaitGroup) {
 
 	sleepDuration := end.Sub(start)
 
-	var lastEndTime int64
-
-	for {
-		fInput := cloudwatchlogs.FilterLogEventsInput{
+	for _, streamPrefix := range(cfg.StreamPrefix) {
+		filterEvtInput := cloudwatchlogs.FilterLogEventsInput{
 			StartTime: &startInMs,
 			EndTime: &endInMs,
 			LogGroupName: &cfg.LoggroupName,
-			LogStreamNamePrefix: &cfg.StreamPrefix,
+			LogStreamNamePrefix: &streamPrefix,
 			FilterPattern: &cfg.FilterPtn,
 		}
-
-		// log.Printf("last endtime: %d\n",lastEndTime)
-		if lastEndTime != 0 {
-			fInput.SetStartTime(lastEndTime)
-			now := time.Now().UnixNano() / NanosPerMillisecond
-			fInput.SetEndTime(now)
-		}
-
-		out, e := clog.FilterLogEvents(&fInput)
-		if e != nil {
-			log.Fatalf("ERROR can not FilterLogEvent - %v\n", e)
-		}
-
-		events := out.Events
-		lastEndTime = SendAWSLogEvents(events, cfg.LoggroupName, lastEndTime)
-		log.Printf("Sleep %v\n", sleepDuration)
-		time.Sleep(sleepDuration)
+		go StartAWSCloudwatchLogOnePrefix(cfg, clog, &filterEvtInput, sleepDuration)
 	}
 	wg.Done()
 }
