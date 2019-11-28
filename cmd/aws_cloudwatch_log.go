@@ -108,7 +108,9 @@ func StartAWSCloudwatchLogPolling(cfg *AWSLogConfig, wg *sync.WaitGroup) {
 			LogStreamNamePrefix: &streamPrefix,
 			FilterPattern: &cfg.FilterPtn,
 		}
+		log.Printf("Launch filterlog process for prefix %s\n", streamPrefix)
 		go StartAWSCloudwatchLogOnePrefix(cfg, clog, &filterEvtInput, sleepDuration)
+		time.Sleep(5 * time.Second) //Prevent aws throttle us
 	}
 	wg.Done()
 }
