@@ -45,7 +45,7 @@
         <table>
             <tr>
                 <td><label for="keyword">Keyword: </label></td>
-				<td><input name="keyword" id="keyword" type="text" value="{{ .keyword }}" title="keyword to search, Use &,+ to combine filter and -,! to negate. Example 'errcd & error + !ehealth + -build' will search contains errcd and error exclude ehealth exclude build"/></td>
+				<td><input name="keyword" id="keyword" type="text" value="{{ .keyword }}" title="keyword to search, Use & or + to combine filter and - or ! to negate. Example 'errcd & error + !ehealth + -build' will search contains errcd and error exclude ehealth exclude build"/></td>
 				<td><input type="checkbox" name="sortorder" value="DESC" {{ .sortorder }}>Sort Descending</td>
 				<td><input name="duration" id="duration" type="text" value="{{ .duration }}" title="Time range, eg. 15m for 15 minutes ago. Or dd/mm/yyyy hh:mm:ss - dd/mm/yyyy hh:mm:ss"/></td>
 				<td><input name="tz" id="tz" type="text" value="{{ .tz }}" title="TimeZone"/></td>
