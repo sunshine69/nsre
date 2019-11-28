@@ -64,6 +64,13 @@ func StartAWSCloudwatchLogOnePrefix(cfg *AWSLogConfig, cl *cloudwatchlogs.CloudW
 			filterEvtInput.SetStartTime(lastEndTime)
 			now := time.Now().UnixNano() / NanosPerMillisecond
 			filterEvtInput.SetEndTime(now)
+		} else {
+			nowT := time.Now()
+			now := nowT.UnixNano() / NanosPerMillisecond
+			filterEvtInput.SetEndTime(now)
+			startT := nowT.Add(-1 * sleepDuration)
+			start := startT.UnixNano() / NanosPerMillisecond
+			filterEvtInput.SetStartTime(start)
 		}
 		out, e := cl.FilterLogEvents(filterEvtInput)
 		if e != nil {
