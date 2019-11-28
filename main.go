@@ -118,6 +118,13 @@ func main() {
 		log.Printf("%s captured. Do cleaning up\n", s.String())
 		exitCh <- struct{}{}
 		wg.Wait()
+	case "awslog":
+		exitCh1 := make(chan struct{})
+		wg.Add(1)
+		go cmd.StartAllAWSCloudwatchLogPolling(&wg, exitCh1)
+		s := <-c
+		log.Printf("%s captured. Do cleaning up\n", s.String())
+		exitCh1 <- struct{}{}
 	case "tailserver":
 		go cmd.StartServer()
 		time.Sleep(2 * time.Second)
