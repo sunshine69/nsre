@@ -1,11 +1,11 @@
 package cmd
 
 import (
+	"syscall"
 	"crypto/tls"
 	"strconv"
 	"path/filepath"
 	"io"
-	"sync"
 	"strings"
 	"bytes"
 	"io/ioutil"
@@ -29,25 +29,23 @@ type TailLogConfig struct {
 }
 
 //TailOneGlob -
-func TailOneGlob(cfg *TailLogConfig, wg *sync.WaitGroup, globPtn string, c chan struct{}) {
+func TailOneGlob(cfg *TailLogConfig, globPtn string, c chan os.Signal) {
 	filesPath, e := filepath.Glob(globPtn)
 	if e != nil {
 		log.Printf("ERROR parsing glob pattern - %v\n", e)
-		wg.Done()
 		return
 	}
 	if len(filesPath) == 0 {
 		log.Printf("INFO parsing glob pattern return no files\n")
-		wg.Done()
 		return
 	}
 	for _, _logFile := range(filesPath) {
-		go TailOnePath(cfg, wg, _logFile, c)
+		go TailOnePath(cfg, _logFile, c)
 	}
 }
 
 //TailOnePath -
-func TailOnePath(cfg *TailLogConfig, wg *sync.WaitGroup, logFile string, c chan struct{}) {
+func TailOnePath(cfg *TailLogConfig, logFile string, c chan os.Signal) {
 	log.Printf("Start tailing %s\n", logFile)
 	// offset − This is the position of the read/write pointer within the file.
 	// whence − This is optional and defaults to 0 which means absolute file positioning, other values are 1 which means seek relative to the current position and 2 means seek relative to the file's end.
@@ -65,14 +63,14 @@ func TailOnePath(cfg *TailLogConfig, wg *sync.WaitGroup, logFile string, c chan 
 	if cfg.TailConfig.Follow {
 		go ProcessTailLines(cfg, t)
 		<-c
-		log.Printf("Signal captured. Do cleaning up\n")
+		log.Printf("TailOnePath - Signal captured. Do cleaning up\n")
 		SaveTailPosition(t, cfg)
 		t.Stop()
 		t.Cleanup()
 	} else {
 		ProcessTailLines(cfg, t)
 	}
-	wg.Done()
+	c<- syscall.SIGQUIT
 }
 
 //TestTailLog -
@@ -89,12 +87,10 @@ func TestTailLog(cfg tail.Config, logFile string) {
 }
 
 //TailLog -
-func TailLog(cfg *TailLogConfig, wg *sync.WaitGroup, c chan struct{}){
+func TailLog(cfg *TailLogConfig, c chan os.Signal){
 	for _, logFile := range(cfg.Paths) {
-		wg.Add(1)
-		TailOneGlob(cfg, wg, logFile, c)
+		go TailOneGlob(cfg, logFile, c)
 	}
-	wg.Done()
 }
 
 //SaveTailPosition -

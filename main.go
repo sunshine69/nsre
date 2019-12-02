@@ -8,14 +8,13 @@ import (
 	"time"
 	"path/filepath"
 	"github.com/nxadm/tail"
-	"sync"
 	"os"
 	"log"
 	"flag"
 	"github.com/sunshine69/nsre/cmd"
 )
 
-func startTailServer(tailCfg tail.Config, wg *sync.WaitGroup, c chan struct{}) {
+func startTailServer(tailCfg tail.Config, c chan os.Signal) {
 	if len(cmd.Config.Logfiles) == 0 { return }
 	for _, _logFile := range(cmd.Config.Logfiles) {
 		if len(_logFile.Paths) == 0 { continue }
@@ -24,10 +23,8 @@ func startTailServer(tailCfg tail.Config, wg *sync.WaitGroup, c chan struct{}) {
 			TailConfig: tailCfg,
 		}
 		log.Printf("Spawn tailling process ...\n")
-		wg.Add(1)
-		go cmd.TailLog(&_tailLogConfig, wg, c)
+		go cmd.TailLog(&_tailLogConfig, c)
 	}
-	wg.Done()
 }
 
 func main() {
@@ -93,7 +90,6 @@ func main() {
 		MaxLineSize: 0,
 	}
 
-	var wg sync.WaitGroup
 	c := make(chan os.Signal, 4)
 	signal.Notify(c,
 		syscall.SIGHUP,
@@ -111,33 +107,32 @@ func main() {
 	case "nagios":
 		cmd.RunNagiosCheckCommand(*cmdName)
 	case "tail":
-		wg.Add(1)
-		exitCh := make(chan struct{})
-		go startTailServer(tailCfg, &wg, exitCh)
+		exitCh := make(chan os.Signal)
+		go startTailServer(tailCfg, exitCh)
 		s := <-c
 		log.Printf("%s captured. Do cleaning up\n", s.String())
-		exitCh <- struct{}{}
-		wg.Wait()
+		exitCh<- s
+		s = <-exitCh
 	case "awslog":
-		exitCh1 := make(chan struct{})
-		wg.Add(1)
-		go cmd.StartAllAWSCloudwatchLogPolling(&wg, exitCh1)
+		exitCh1 := make(chan os.Signal)
+		go cmd.StartAllAWSCloudwatchLogPolling(exitCh1)
 		s := <-c
 		log.Printf("%s captured. Do cleaning up\n", s.String())
-		exitCh1 <- struct{}{}
+		exitCh1 <- s
+		s = <-exitCh1
 	case "tailserver":
 		go cmd.StartServer()
 		time.Sleep(2 * time.Second)
-		exitCh1 := make(chan struct{})
-		exitCh2 := make(chan struct{})
-		wg.Add(1)
-		go cmd.StartAllAWSCloudwatchLogPolling(&wg, exitCh1)
-		wg.Add(1)
-		startTailServer(tailCfg, &wg, exitCh2)
+		exitCh1 := make(chan os.Signal)
+		exitCh2 := make(chan os.Signal)
+		go cmd.StartAllAWSCloudwatchLogPolling(exitCh1)
+		go startTailServer(tailCfg, exitCh2)
 		s := <-c
 		log.Printf("%s captured. Do cleaning up\n", s.String())
-		exitCh1 <- struct{}{}
-		exitCh2 <- struct{}{}
+		exitCh1 <- s
+		exitCh2 <- s
+		s = <-exitCh1
+		s = <-exitCh2
 	case "reset", "setup":
 		files, _ := filepath.Glob(filepath.Join(os.Getenv("HOME"), "taillog*"))
 		for _, f := range(files) {

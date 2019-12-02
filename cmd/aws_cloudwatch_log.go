@@ -1,9 +1,9 @@
 package cmd
 
 import (
+	"syscall"
 	"github.com/bvinc/go-sqlite-lite/sqlite3"
 	"net/url"
-	"sync"
 	"time"
 	"github.com/aws/aws-sdk-go/aws"
 	"log"
@@ -31,16 +31,15 @@ func ParseAWSCloudWatchLogEvent(appNameStr string) {
 	SendAWSLogEvents(awsLog.Events, appNameStr, 0, nil)
 }
 
-func StartAllAWSCloudwatchLogPolling(wg *sync.WaitGroup, c chan struct{}) {
+func StartAllAWSCloudwatchLogPolling(c chan os.Signal) {
 	for _, cfg := range(Config.AWSLogs) {
-		wg.Add(1)
 		log.Printf("Start parsing aws log config %v\n", cfg)
-		go StartAWSCloudwatchLogPolling(&cfg, wg)
+		go StartAWSCloudwatchLogPolling(&cfg)
 		time.Sleep(5 * time.Second)
 	}
 	<-c
-	log.Printf("Signal captured. Do cleaning up\n")
-	wg.Done()
+	log.Printf("StartAllAWSCloudwatchLogPolling - Signal captured. Do cleaning up\n")
+	c<- syscall.SIGQUIT
 }
 
 //StartAWSCloudwatchLogOnePrefix -
@@ -86,7 +85,7 @@ func StartAWSCloudwatchLogOnePrefix(cfg *AWSLogConfig, cl *cloudwatchlogs.CloudW
 }
 
 //StartAWSCloudwatchLogPolling -
-func StartAWSCloudwatchLogPolling(cfg *AWSLogConfig, wg *sync.WaitGroup) {
+func StartAWSCloudwatchLogPolling(cfg *AWSLogConfig) {
 	region := cfg.Region
 	if region == "" { region = "ap-southeast-2" }
 	ses, e := session.NewSessionWithOptions(session.Options{
@@ -120,5 +119,4 @@ func StartAWSCloudwatchLogPolling(cfg *AWSLogConfig, wg *sync.WaitGroup) {
 		go StartAWSCloudwatchLogOnePrefix(cfg, clog, &filterEvtInput, sleepDuration)
 		time.Sleep(5 * time.Second) //Prevent aws throttle us
 	}
-	wg.Done()
 }
