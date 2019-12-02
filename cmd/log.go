@@ -62,15 +62,16 @@ func TailOnePath(cfg *TailLogConfig, logFile string, c chan os.Signal) {
 
 	if cfg.TailConfig.Follow {
 		go ProcessTailLines(cfg, t)
-		<-c
+		s := <-c
 		log.Printf("TailOnePath - Signal captured. Do cleaning up\n")
 		SaveTailPosition(t, cfg)
 		t.Stop()
 		t.Cleanup()
+		c<- s
 	} else {
 		ProcessTailLines(cfg, t)
+		c<- syscall.SIGQUIT
 	}
-	c<- syscall.SIGQUIT
 }
 
 //TestTailLog -

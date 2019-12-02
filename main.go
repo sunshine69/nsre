@@ -109,10 +109,12 @@ func main() {
 	case "tail":
 		exitCh := make(chan os.Signal)
 		go startTailServer(tailCfg, exitCh)
-		s := <-c
-		log.Printf("%s captured. Do cleaning up\n", s.String())
-		exitCh<- s
-		s = <-exitCh
+		if *tailFollow{
+			s := <-c
+			log.Printf("%s captured. Do cleaning up\n", s.String())
+			exitCh<- s
+			s = <-exitCh
+		} else { <-exitCh }
 	case "awslog":
 		exitCh1 := make(chan os.Signal)
 		go cmd.StartAllAWSCloudwatchLogPolling(exitCh1)
