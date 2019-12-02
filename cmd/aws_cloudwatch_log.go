@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"syscall"
 	"github.com/bvinc/go-sqlite-lite/sqlite3"
 	"net/url"
 	"time"
@@ -37,13 +36,13 @@ func StartAllAWSCloudwatchLogPolling(c chan os.Signal) {
 		go StartAWSCloudwatchLogPolling(&cfg)
 		time.Sleep(5 * time.Second)
 	}
-	<-c
+	s := <-c
 	log.Printf("StartAllAWSCloudwatchLogPolling - Signal captured. Do cleaning up\n")
-	c<- syscall.SIGQUIT
+	c<- s
 }
 
 //StartAWSCloudwatchLogOnePrefix -
-func StartAWSCloudwatchLogOnePrefix(cfg *AWSLogConfig, cl *cloudwatchlogs.CloudWatchLogs, filterEvtInput *cloudwatchlogs.FilterLogEventsInput, sleepDuration time.Duration) {
+func StartAWSCloudwatchLogOnePrefix(cfg *AWSLogConfig, cl *cloudwatchlogs.CloudWatchLogs, filterEvtInput cloudwatchlogs.FilterLogEventsInput, sleepDuration time.Duration) {
 	var lastEndTime int64
 
 	var conn *sqlite3.Conn
@@ -71,7 +70,7 @@ func StartAWSCloudwatchLogOnePrefix(cfg *AWSLogConfig, cl *cloudwatchlogs.CloudW
 			start := startT.UnixNano() / NanosPerMillisecond
 			filterEvtInput.SetStartTime(start)
 		}
-		out, e := cl.FilterLogEvents(filterEvtInput)
+		out, e := cl.FilterLogEvents(&filterEvtInput)
 		if e != nil {
 			log.Printf("ERROR can not FilterLogEvent. Maybe api throttling. Sleep 15 minutes - %v\n", e)
 			time.Sleep(15 * time.Minute)
@@ -106,17 +105,18 @@ func StartAWSCloudwatchLogPolling(cfg *AWSLogConfig) {
 	endInMs := end.UnixNano() / NanosPerMillisecond
 
 	sleepDuration := end.Sub(start)
+	logGroupName := cfg.LoggroupName
 
 	for _, streamPrefix := range(cfg.StreamPrefix) {
 		filterEvtInput := cloudwatchlogs.FilterLogEventsInput{
 			StartTime: &startInMs,
 			EndTime: &endInMs,
-			LogGroupName: &cfg.LoggroupName,
+			LogGroupName: &logGroupName,
 			LogStreamNamePrefix: &streamPrefix,
 			FilterPattern: &cfg.FilterPtn,
 		}
-		log.Printf("Launch filterlog process for prefix %s\n", streamPrefix)
-		go StartAWSCloudwatchLogOnePrefix(cfg, clog, &filterEvtInput, sleepDuration)
+		log.Printf("Launch filterlog process for loggroup %s - prefix %s\n",logGroupName, streamPrefix)
+		go StartAWSCloudwatchLogOnePrefix(cfg, clog, filterEvtInput, sleepDuration)
 		time.Sleep(5 * time.Second) //Prevent aws throttle us
 	}
 }
