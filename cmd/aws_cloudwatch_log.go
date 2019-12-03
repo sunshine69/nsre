@@ -42,7 +42,7 @@ func StartAllAWSCloudwatchLogPolling(c chan os.Signal) {
 }
 
 //StartAWSCloudwatchLogOnePrefix -
-func StartAWSCloudwatchLogOnePrefix(cfg *AWSLogConfig, cl *cloudwatchlogs.CloudWatchLogs, filterEvtInput cloudwatchlogs.FilterLogEventsInput, sleepDuration time.Duration) {
+func StartAWSCloudwatchLogOnePrefix(logGroupName string, cl *cloudwatchlogs.CloudWatchLogs, filterEvtInput cloudwatchlogs.FilterLogEventsInput, sleepDuration time.Duration) {
 	var lastEndTime int64
 
 	var conn *sqlite3.Conn
@@ -76,7 +76,7 @@ func StartAWSCloudwatchLogOnePrefix(cfg *AWSLogConfig, cl *cloudwatchlogs.CloudW
 			time.Sleep(15 * time.Minute)
 		}
 		events := out.Events
-		lastEndTime = SendAWSLogEvents(events, cfg.LoggroupName, lastEndTime, conn)
+		lastEndTime = SendAWSLogEvents(events, logGroupName, lastEndTime, conn)
 
 		log.Printf("Sleep %v\n", sleepDuration)
 		time.Sleep(sleepDuration)
@@ -116,7 +116,7 @@ func StartAWSCloudwatchLogPolling(cfg *AWSLogConfig) {
 			FilterPattern: &cfg.FilterPtn,
 		}
 		log.Printf("Launch filterlog process for loggroup %s - prefix %s\n",logGroupName, streamPrefix)
-		go StartAWSCloudwatchLogOnePrefix(cfg, clog, filterEvtInput, sleepDuration)
+		go StartAWSCloudwatchLogOnePrefix(logGroupName, clog, filterEvtInput, sleepDuration)
 		time.Sleep(5 * time.Second) //Prevent aws throttle us
 	}
 }

@@ -27,6 +27,21 @@ func startTailServer(tailCfg tail.Config, c chan os.Signal) {
 	}
 }
 
+func BackupConfig(configFile *string) {
+	if _, e := os.Stat(*configFile); os.IsNotExist(e) {
+		log.Printf("INFO Config does not exist. Not backing up\n")
+	} else {
+		content, e := ioutil.ReadFile(*configFile)
+		if e != nil {
+			log.Fatalf("ERROR can not read config for backup - %v\n", e)
+		} else {
+			if e := ioutil.WriteFile(*configFile + ".bak",[]byte(content) ,0600); e != nil {
+				log.Fatalf("ERROR writing backup config file %v\n", e)
+			}
+		}
+	}
+}
+
 func main() {
 
 	defaultConfig :=  filepath.Join(os.Getenv("HOME"), ".nsre.yaml")
@@ -46,12 +61,6 @@ func main() {
 
 	flag.Parse()
 
-	e := cmd.LoadConfig(*configFile)
-	if *version {
-		fmt.Println(cmd.Version)
-		os.Exit(0)
-	}
-
 	var generateDefaultConfig = func() (error) {
 		return cmd.GenerateDefaultConfig(
 			"file", *configFile,
@@ -64,19 +73,16 @@ func main() {
 		)
 	}
 
-	if e != nil {
+	if e := cmd.LoadConfig(*configFile); e!= nil {
 		log.Printf("INFO Can not read config file. %v\nBack up and Generating new one\n", e)
-		content, e := ioutil.ReadFile(*configFile)
-		if e != nil {
-			log.Fatalf("ERROR can not read config for backup - %v\n", e)
-		} else {
-			if e := ioutil.WriteFile(*configFile + ".bak",[]byte(content) ,0600); e != nil {
-				log.Fatalf("ERROR writing backup config file %v\n", e)
-			}
-		}
+		BackupConfig(configFile)
 		if generateDefaultConfig() != nil {
 			log.Fatalf("ERROR can not generate config file %v\n", e)
 		}
+	}
+	if *version {
+		fmt.Println(cmd.Version)
+		os.Exit(0)
 	}
 
 	seek := tail.SeekInfo{Offset: 0, Whence: 0}
@@ -141,8 +147,9 @@ func main() {
 			os.Remove(f)
 		}
 		log.Printf("Going to generate config...")
+		BackupConfig(configFile)
 		if generateDefaultConfig() != nil {
-			log.Fatalf("ERROR can not generate config file %v\n", e)
+			log.Fatalf("ERROR can not generate config file %v\n")
 		}
 	case "tailtest":
 		cmd.TestTailLog(tailCfg, *tailFile)
