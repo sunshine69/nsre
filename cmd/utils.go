@@ -134,12 +134,8 @@ func CheckAuthorizedDomain(email string) (bool) {
 
 //SendAWSLogEvents - Store the last End time in the event list
 func SendAWSLogEvents(evts []*cloudwatchlogs.FilteredLogEvent, appNameStr string, timeMark int64, conn *sqlite3.Conn) (int64) {
-	evtCount := len(evts)
-	log.Printf("Events count: %d\n", evtCount)
-	if evtCount == 0 { return 0 }
 
 	var timeParsed time.Time
-
 	hostStr, _ := os.Hostname()
 
 	for idx, data := range(evts) {

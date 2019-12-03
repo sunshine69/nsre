@@ -76,8 +76,11 @@ func StartAWSCloudwatchLogOnePrefix(logGroupName string, cl *cloudwatchlogs.Clou
 			time.Sleep(15 * time.Minute)
 		}
 		events := out.Events
-		lastEndTime = SendAWSLogEvents(events, logGroupName, lastEndTime, conn)
-
+		evtCounts := len(events)
+		log.Printf("%s - %s - Events count: %d\n", logGroupName, *filterEvtInput.LogStreamNamePrefix, evtCounts)
+		if evtCounts > 0 {
+			lastEndTime = SendAWSLogEvents(events, logGroupName, lastEndTime, conn)
+		}
 		log.Printf("Sleep %v\n", sleepDuration)
 		time.Sleep(sleepDuration)
 	}
@@ -99,7 +102,6 @@ func StartAWSCloudwatchLogPolling(cfg *AWSLogConfig) {
 		log.Fatalf("ERROR can not create session - %v\n", e)
 	}
 
-	clog := cloudwatchlogs.New(ses)
 	start, end := ParseTimeRange(cfg.Period, CurrentZone)
 	startInMs := start.UnixNano() / NanosPerMillisecond
 	endInMs := end.UnixNano() / NanosPerMillisecond
@@ -108,6 +110,7 @@ func StartAWSCloudwatchLogPolling(cfg *AWSLogConfig) {
 	logGroupName := cfg.LoggroupName
 
 	for _, streamPrefix := range(cfg.StreamPrefix) {
+		clog := cloudwatchlogs.New(ses)
 		filterEvtInput := cloudwatchlogs.FilterLogEventsInput{
 			StartTime: &startInMs,
 			EndTime: &endInMs,

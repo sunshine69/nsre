@@ -286,7 +286,7 @@ func ProcessSearchLog(w http.ResponseWriter, r *http.Request) {
 
 //DoSQLSearch - Execute the search in the database. Return the record counts and fill the string builder object.
 func DoSQLSearch(q string, o *strings.Builder) (int) {
-	fmt.Println(q)
+	log.Println(q)
 
 	conn := GetDBConn()
 	defer conn.Close()
