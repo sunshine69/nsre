@@ -58,7 +58,7 @@ func StartAWSCloudwatchLogOnePrefix(logGroupName string, cl *cloudwatchlogs.Clou
 	}
 
 	for {
-		if lastEndTime != 0 {
+		if lastEndTime > 0 {
 			filterEvtInput.SetStartTime(lastEndTime)
 			now := time.Now().UnixNano() / NanosPerMillisecond
 			filterEvtInput.SetEndTime(now)

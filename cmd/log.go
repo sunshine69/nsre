@@ -145,14 +145,18 @@ func IsEOF(filename string, seek int64) (bool) {
 }
 
 //FilterPassword -
-func FilterPassword(text string, passPtn *regexp.Regexp) (string) {
-	return passPtn.ReplaceAllString(text, "$1 DATA_FILTERED ")
+func FilterPassword(text string, passPtns []*regexp.Regexp) (string) {
+	out := text
+	for _, passPtn := range(passPtns) {
+		out = passPtn.ReplaceAllString(out, "$1 DATA_FILTERED ")
+	}
+	return out
 }
 
 //SendLine -
 func SendLine(timeHarvest, timeParsed time.Time, hostStr, appNameStr, logFile, msgStr string) (bool) {
 	IsOK := true
-	message := FilterPassword(msgStr, PasswordFilterPtn)
+	message := FilterPassword(msgStr, PasswordFilterPtns)
 	// message = DecodeJenkinsConsoleNote(message)
 
 	logData := LogData{

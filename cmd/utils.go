@@ -147,7 +147,7 @@ func SendAWSLogEvents(evts []*cloudwatchlogs.FilteredLogEvent, appNameStr string
 		logFile, msgStr :=  data.LogStreamName, data.Message
 
 		if conn != nil {
-			message := FilterPassword(*msgStr, PasswordFilterPtn)
+			message := FilterPassword(*msgStr, PasswordFilterPtns)
 			err := conn.Exec(`INSERT INTO log(timestamp, datelog, host, application, logfile, message) VALUES (?, ?, ?, ?, ?, ?)`, timeHarvest.UnixNano(), timeParsed.UnixNano(), hostStr, appNameStr, *logFile, message)
 			if err != nil {
 				log.Printf("ERROR - can not insert data for logline - %v\n", err)

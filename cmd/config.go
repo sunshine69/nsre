@@ -45,7 +45,7 @@ type AppConfig struct { //Why do I have to tag every field! Because yaml driver 
     Dbtimeout string
     Sslcert string
     Sslkey string
-    PasswordFilterPattern string `yaml:"passwordfilterpattern"`
+    PasswordFilterPatterns []string `yaml:"passwordfilterpatterns"`
     AppGoogleClientID string
     AppGoogleClientSecret string
     Sessionkey string
@@ -120,7 +120,7 @@ func GenerateDefaultConfig(opt ...interface{}) (e error) {
         },
         Sslcert: "",
         Sslkey: "",
-        PasswordFilterPattern: `([Pp]assword|[Pp]assphrase)['"]*[\:\=]*[\s\n]*[^\s]+[\s;]`,
+        PasswordFilterPatterns: []string {`([Pp]assword|[Pp]assphrase)['"]*[\:\=]*[\s\n]*[^\s]+[\s;]`},
     }
 
     var fPath, serverurl, jwtkey, logfile, appname, sslcert, sslkey string
@@ -200,7 +200,7 @@ var ServerProtocol string
 //CurrentYear - CurrentZone - Used for timeadjust
 var CurrentYear, CurrentZone string
 
-var PasswordFilterPtn *regexp.Regexp
+var PasswordFilterPtns []*regexp.Regexp
 
 //LoadConfig -
 func LoadConfig(fPath string) (e error) {
@@ -214,8 +214,9 @@ func LoadConfig(fPath string) (e error) {
     CurrentYear = strconv.FormatInt(int64(_t.Year()), 10)
     CurrentZone, _ = _t.Zone()
 
-    PasswordFilterPtn = regexp.MustCompile(Config.PasswordFilterPattern)
-    fmt.Printf("Password filter: %v\n", PasswordFilterPtn.String)
+    for _, ptn := range(Config.PasswordFilterPatterns){
+        PasswordFilterPtns = append(PasswordFilterPtns, regexp.MustCompile(ptn))
+    }
 
     if Config.Sslkey == "" {
         ServerProtocol = "http"
