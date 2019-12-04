@@ -61,6 +61,10 @@ func main() {
 
 	flag.Parse()
 
+	if (*mode == "client") && (*cmdName == "") {
+		log.Fatalf("Mode client require option -cmd for command name\n. Run with option -h for help\n")
+	}
+
 	var generateDefaultConfig = func() (error) {
 		return cmd.GenerateDefaultConfig(
 			"file", *configFile,
