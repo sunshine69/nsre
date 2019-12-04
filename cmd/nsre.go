@@ -466,7 +466,8 @@ func InsertLog(data []byte) {
 	if e := json.Unmarshal(data, &logData); e != nil {
 		log.Printf("ERROR - can not parse json data for logline - %v\n", e)
 	}
-	err := conn.Exec(`INSERT INTO log(timestamp, datelog, host, application, logfile, message) VALUES (?, ?, ?, ?, ?, ?)`, logData.Timestamp, logData.Datelog, logData.Host, logData.Application, logData.Logfile, logData.Message)
+	message := FilterPassword(logData.Message, PasswordFilterPtns)
+	err := conn.Exec(`INSERT INTO log(timestamp, datelog, host, application, logfile, message) VALUES (?, ?, ?, ?, ?, ?)`, logData.Timestamp, logData.Datelog, logData.Host, logData.Application, logData.Logfile, message)
 	if err != nil {
 		log.Printf("ERROR - can not insert data for logline - %v\n", err)
 	}
