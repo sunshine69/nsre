@@ -174,7 +174,7 @@ func SendLine(timeHarvest, timeParsed time.Time, hostStr, appNameStr, logFile, m
 		IsOK = false
 	}
 	client := &http.Client{}
-	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: Config.IgnoreCertificateCheck}
     validToken, err := GenerateJWT()
     if err != nil {
 		log.Printf("ERROR - Failed to generate token - %v\n", err)

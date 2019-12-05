@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"crypto/tls"
 	"strconv"
 	"os"
 	"strings"
@@ -17,7 +18,10 @@ func RunCommand(cmdName ...string) (string) {
     if err != nil {
         fmt.Printf("ERROR - Failed to generate token - %v\n", err)
     }
+
     client := &http.Client{}
+	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: Config.IgnoreCertificateCheck}
+
     req, _ := http.NewRequest("GET", strings.Join([]string{Config.Serverurl, "run", cmdName[0]}, "/"), nil)
     req.Header.Set("Token", validToken)
 
