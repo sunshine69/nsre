@@ -43,10 +43,10 @@ func RunCommand(cmdName ...string) (string) {
 func RunNagiosCheckCommand(cmdName string) {
     o := RunCommand(cmdName, "quiet")
     _splited := strings.SplitN(o, "\n", 2)
-    fmt.Println(_splited[1])
+    fmt.Print(_splited[1])
     c, e := strconv.Atoi(_splited[0])
     if e != nil {
-        fmt.Printf("ERROR can not parse exit code from remote - %v\n", e)
+        fmt.Printf("ERROR can not parse exit code from remote - %v", e)
         os.Exit(2)
     }
     os.Exit(c)

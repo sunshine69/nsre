@@ -100,15 +100,20 @@ func ProcessCommand(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	CommandName := vars["CommandName"]
 	Commands := Config.Commands
+	foundCmd := false
+	loop:
 	for _, cmd := range(Commands) {
 		switch cmd.Name {
 		case CommandName:
 			output := runSystemCommand(cmd.Path)
 			w.Write([]byte(output))
-		default:
-			output := "2\nERROR - Command "+CommandName +" does not exists"
-			w.Write([]byte(output))
+			foundCmd = true
+			break loop
 		}
+	}
+	if ! foundCmd {
+		output := "2\nERROR - Command "+ CommandName +" does not exists"
+		w.Write([]byte(output))
 	}
 }
 

@@ -102,6 +102,10 @@ func GenerateDefaultConfig(opt ...interface{}) (e error) {
                 Name: "example_ls",
                 Path: "/bin/ls",
             },
+            {
+                Name: "ping",
+                Path: "/bin/echo pong",
+            },
         },
         Logfiles: []LogFile{
             {
