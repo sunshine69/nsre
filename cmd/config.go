@@ -178,6 +178,7 @@ func GenerateDefaultConfig(opt ...interface{}) (e error) {
         defaultConfig.Logfiles = _Logfiles
         defaultConfig.Serverurl = serverurl
         defaultConfig.JwtKey = jwtkey
+        defaultConfig.IgnoreCertificateCheck = true
 
         data, e = yaml.Marshal(defaultConfig)
         if e != nil { log.Fatalf("ERROR can not dump default config yaml")}
