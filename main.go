@@ -61,6 +61,11 @@ func main() {
 
 	flag.Parse()
 
+	if *version {
+		fmt.Println(cmd.Version)
+		os.Exit(0)
+	}
+
 	if (*mode == "client") && (*cmdName == "") {
 		log.Fatalf("Mode client require option -cmd for command name\n. Run with option -h for help\n")
 	}
@@ -84,10 +89,7 @@ func main() {
 			log.Fatalf("ERROR can not generate config file %v\n", e)
 		}
 	}
-	if *version {
-		fmt.Println(cmd.Version)
-		os.Exit(0)
-	}
+
 
 	seek := tail.SeekInfo{Offset: 0, Whence: 0}
 	tailCfg := tail.Config{
