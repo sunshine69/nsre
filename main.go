@@ -15,16 +15,19 @@ import (
 )
 
 func startTailServer(tailCfg tail.Config, c chan os.Signal) {
-	if len(cmd.Config.Logfiles) == 0 { return }
+	if len(cmd.Config.Logfiles) == 0 { c<- syscall.SIGQUIT; return }
+	count := 0
 	for _, _logFile := range(cmd.Config.Logfiles) {
 		if len(_logFile.Paths) == 0 { continue }
 		_tailLogConfig := cmd.TailLogConfig{
 			LogFile: _logFile,
 			TailConfig: tailCfg,
 		}
-		log.Printf("Spawn tailling process ...\n")
+		count = count + 1
+		log.Printf("Spawn tailling process number %d ...\n", count)
 		go cmd.TailLog(&_tailLogConfig, c)
 	}
+	if count == 0 { c<- syscall.SIGQUIT; return }
 }
 
 func BackupConfig(configFile *string) {
