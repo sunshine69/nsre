@@ -30,7 +30,7 @@ On windows you need to install and setup golang, git and
 [msys2](http://www.msys2.org/). Golang sqlite3 driver uses cgo thus you need
 gcc, install from msys2. Please refer to each documentation guide to get it done.
 
-Once the build system is installed, use the same go build above to build teh
+Once the build system is installed, use the same go build above to build the
 software.
 
 ## Usage
@@ -52,7 +52,10 @@ For executing remote command and get logs.
 
 If you want to also harvest log in the same server running this then use
 
-`nsre -c nsre.yaml -m tailserver`
+`nsre -c nsre.yaml -m tailserver -tailf`
+
+This also enabled awslogs fetching if you set any awslogs entries in config. See
+below.
 
 ### Log shipping in server mode
 
@@ -61,6 +64,41 @@ This will tail the log and ship to server.
 `nsre -c nsre.yaml -m tail -tailf`
 
 Remove `-tailf` so it will tail the log and exit.
+
+### AWSLogs support
+
+In the config you can see one entry which has empty list awslogs: []
+
+This is for you to define several aws cloudwatch log entries to query. Sample
+below
+
+```
+awslogs:
+    - loggroupname: '/aws/ecs/uat'
+      streamprefix:
+        - 'xvt-report-pdf'
+        - 'errcd-wa'
+        - 'api'
+      filterptn: ''
+      profile: 'errcd_wa'
+      region: 'ap-southeast-2'
+      period: '5m'
+    - loggroupname: '/aws/ecs/int'
+      streamprefix:
+        - 'api'
+        - 'errcd-wa'
+        - 'xvt-report-pdf'
+      filterptn: ''
+      profile: 'errcd_wa'
+      region:
+      period: '5m'
+
+```
+
+It is self explanatory! The `period` specify how long we sleep and wake up to
+fetch logs, and how long in the past since the time you start the server to
+fetch log.
+
 
 ### Add hoc log shipping
 
@@ -118,5 +156,109 @@ So in `-m tailserver`  mode you may send the log to some other real log server
 and it listens for the remote command to execute on `Port` if the `Serverurl` is
 not itself. This is intended usages.
 
+### Running as service
+
+On linux I use systemd and a wrapper script looks like below.
+
+```
+#!/bin/bash
+
+export SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+cd $SCRIPT_DIR
+
+export HOME=/root
+nohup ./nsre $* &
+
+```
+
+Systemd unit at
+
+```
+cat /etc/systemd/system/nsre.service
+[Unit]
+Description=NSRE Server
+Documentation=https://github.com/sunshine69/nsre
+#After=network-online.target firewalld.service
+#Wants=network-online.target
+
+[Service]
+Type=forking
+
+StandardOutput=file:/var/nsre/nsre.log
+StandardError=file:/var/nsre/nsre-error.log
+#SyslogIdentifier=<your program identifier> # without any quote
+
+WorkingDirectory=/var/nsre
+#PIDFile=/run/nagios-api.pid
+ExecStart=/var/nsre/nsre.sh -c nsre.yaml -m tailserver -tailf
+#ExecReload=/bin/kill -s HUP $MAINPID
+# Having non-zero Limit*s causes performance problems due to accounting overhead
+# in the kernel. We recommend using cgroups to do container-local accounting.
+LimitNOFILE=infinity
+LimitNPROC=infinity
+LimitCORE=infinity
+# Uncomment TasksMax if your systemd version supports it.
+# Only systemd 226 and above support this version.
+#TasksMax=infinity
+TimeoutStartSec=0
+# kill only the nagios-api process, not all processes in the cgroup
+KillMode=process
+# restart the nagios-api process if it exits prematurely
+Restart=on-failure
+StartLimitBurst=3
+StartLimitInterval=60s
+
+[Install]
+WantedBy=multi-user.target
+```
+
+On windows I use [nssm](https://nssm.cc/usage)
+
+```
+nssm install nsre "C:\ansible_install\nsre\nsre.exe" -c "C:\ansible_install\nsre\nsre.yaml" -m tail -tailf
+nssm set nsre AppDirectory "C:\ansible_install\nsre"
+```
+
+### Sample complete config file
+
+
+```
+port: 8000
+commands:
+- name: example_ls
+  path: /bin/ls
+- name: ping
+  path: /bin/echo pong
+
+jwtkey: <YOUR JWT KEY>
+logfiles:
+- name: errcd-iis-activity-tas
+  paths:
+# Full path or glob pattern works
+  - D:\nsw-errcdconsolidation-tas-test\logs\DAPIS\activity.log
+  - D:\ERRCD\nsw_errcdconsolidation_aus-qa-rtr\*\tools\RTR.DataProcessing\*.log
+  timelayout: 2006-01-02 15:04:05.999 MST
+  timepattern: '^([\d]{4,4}\-[\d]{2,2}\-[\d]{2,2} [\d]{2,2}\:[\d]{2,2}\:[\d]{2,2}[,]{1,1}[\d]{3,3})[\s]+'
+  timestrreplace: [",", "."]
+  timeadjust: UTC
+  pattern: ([^\s]+.*)$
+  multilineptn: ([^\s]*.*)$
+  appname: "errcd-activity"
+
+serverurl: <Your server url>
+ignorecertificatecheck: false
+logdbpath: logs.db
+dbtimeout: 45s
+sslcert: ""
+sslkey: ""
+# The non capture group will be replaced by a string DATA_FILTERED
+passwordfilterpattern:
+  - ([Pp]assword|[Pp]assphrase)['"]*[\:\=]*[\s\n]*[^\s]+[\s;]
+  - <more pattern>
+
+# See example above
+awslogs: []
+```
 
 END OF DOCUMENT
