@@ -438,7 +438,7 @@ func SetUpLogDatabase() {
 	err := conn.Exec(`
 	CREATE TABLE IF NOT EXISTS log(id integer primary key autoincrement,timestamp int, datelog int, host text, application text, logfile text, message text);
 	CREATE TABLE IF NOT EXISTS user(id integer primary key autoincrement, username text, email text UNIQUE);
-	CREATE UNIQUE INDEX IF NOT EXISTS t_host_idx ON log(timestamp, host);
+	CREATE UNIQUE INDEX IF NOT EXISTS t_host_idx ON log(timestamp, host, datelog, application);
 	PRAGMA main.page_size = 4096;
 	PRAGMA main.cache_size=10000;
 	PRAGMA main.locking_mode=EXCLUSIVE;
