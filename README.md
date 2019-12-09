@@ -44,6 +44,41 @@ The app is controled by option `-m` modename. Run with `-h` for more details.
 will create a sample nsre.yaml config file. Then edit the file to suit your
 needs.
 
+The application uses OAuth to authenticate user in the websearch interface.
+The provider supported is google.com. In the config you would see the section
+below:
+
+
+```
+# Your google api client id and secret.
+appgoogleclientid: ""
+appgoogleclientsecret: ""
+
+# Session to encrypt session cookie. Be sure it is secret and having enough
+# length.
+
+sessionkey: ""
+
+# If your company has custom domain when using google, eg. `name@somecompany.com`
+# and you want to authorise all people to login add `somecompany.co` to
+# `authorizeddomain`
+
+authorizeddomain:
+  somecompany.com: true
+
+# In addition to the above, if you want to authorize by person you need to
+# manually insert that person in the table `user`. At the server run the command
+# `sqlite3 <database_name, eg. logs.db>`
+# .schema will show table user.
+# Insert a record in, then that user with matching email address will be
+# allowed.
+
+# The system first check the user table first and then check the authorized
+# domain. If no user in the table, it will check the domain.
+
+
+```
+
 ### Server mode
 
 For executing remote command and get logs.
@@ -224,18 +259,26 @@ nssm set nsre AppDirectory "C:\ansible_install\nsre"
 
 
 ```
+# Server listen port
 port: 8000
+
+# Commands definitions list
 commands:
 - name: example_ls
   path: /bin/ls
 - name: ping
   path: /bin/echo pong
 
+# JWT key for the client server communications. Need to be the same for server
+# and all client (log shipping and nagios check command)
+
 jwtkey: <YOUR JWT KEY>
+
+
 logfiles:
 - name: errcd-iis-activity-tas
   paths:
-# Full path or glob pattern works
+# Full path or glob pattern also works
   - D:\nsw-errcdconsolidation-tas-test\logs\DAPIS\activity.log
   - D:\ERRCD\nsw_errcdconsolidation_aus-qa-rtr\*\tools\RTR.DataProcessing\*.log
   timelayout: 2006-01-02 15:04:05.999 MST
@@ -246,13 +289,24 @@ logfiles:
   multilineptn: ([^\s]*.*)$
   appname: "errcd-activity"
 
+
+# This is for client mode
 serverurl: <Your server url>
 ignorecertificatecheck: false
+
+# Database config
 logdbpath: logs.db
 dbtimeout: 45s
+
+# If provided the server will enable https on the port specified above
 sslcert: ""
 sslkey: ""
-# The non capture group will be replaced by a string DATA_FILTERED
+
+# At server and client before saving log record the data will be search/replace
+# using this regex pattern to filter sensitive password getting in.
+
+# The non capture group will be replaced by a string DATA_FILTERED.
+
 passwordfilterpattern:
   - ([Pp]assword|[Pp]assphrase)['"]*[\:\=]*[\s\n]*[^\s]+[\s;]
   - <more pattern>
