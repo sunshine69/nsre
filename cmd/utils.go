@@ -41,10 +41,13 @@ func MsToTime(ms int64) time.Time {
 //ParseTimeRange -
 func ParseTimeRange(durationStr, tz string) (time.Time, time.Time) {
 	var start, end time.Time
+	if tz == "" {
+		tz, _ = time.Now().Zone()
+	}
 	timerangePtn := regexp.MustCompile(`([\d]{2,2}/[\d]{2,2}/[\d]{4,4} [\d]{2,2}:[\d]{2,2}:[\d]{2,2}) - ([\d]{2,2}/[\d]{2,2}/[\d]{4,4} [\d]{2,2}:[\d]{2,2}:[\d]{2,2})`)
 	dur, e := time.ParseDuration(durationStr)
 	if e != nil {
-		log.Printf("ERROR can not parse durection string using time.ParseDuration for %s - %v. Will try next\n", durationStr, e)
+		log.Printf("ERROR can not parse duration string using time.ParseDuration for %s - %v. Will try next\n", durationStr, e)
 		m := timerangePtn.FindStringSubmatch(durationStr)
 		if len(m) != 3 {
 			log.Printf("ERROR Can not parse duration. Set default to 15m ago - %v", e)

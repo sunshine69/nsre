@@ -11,6 +11,7 @@ import (
 	"os"
 	"log"
 	"flag"
+	"github.com/mileusna/crontab"
 	"github.com/sunshine69/nsre/cmd"
 )
 
@@ -93,6 +94,12 @@ func main() {
 		}
 	}
 
+	ctab := crontab.New() // create cron table
+
+    // AddJob and test the errors
+    if err := ctab.AddJob("1 0 1 * *", cmd.DatabaseMaintenance); err != nil {
+        log.Printf("WARN - Can not add maintanance job - %v\n", err)
+	}
 
 	seek := tail.SeekInfo{Offset: 0, Whence: 0}
 	tailCfg := tail.Config{

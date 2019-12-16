@@ -477,3 +477,14 @@ func InsertLog(data []byte) {
 		log.Printf("ERROR - can not insert data for logline - %v\n", err)
 	}
 }
+
+//DatabaseMaintenance - all maintenance routine spawn off from here. Currently just delete the records older than the retention period to keep disk space usage managable. User can always use the sqlite command to export data into csv format and save it somewhere.
+func DatabaseMaintenance() {
+	conn := GetDBConn()
+	defer conn.Close()
+	start, _ := ParseTimeRange(Config.LogRetention, "")
+	err := conn.Exec(fmt.Sprint(`DELETE FROM log WHERE timestamp < %d`, start.UnixNano()))
+	if err != nil {
+		log.Printf("ERROR - can not insert data for logline - %v\n", err)
+	}
+}

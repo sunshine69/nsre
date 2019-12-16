@@ -52,6 +52,7 @@ type AppConfig struct { //Why do I have to tag every field! Because yaml driver 
     AuthorizedDomain map[string]bool
     AWSLogs []AWSLogConfig
     IgnoreCertificateCheck bool
+    LogRetention string
 }
 
 //AWSLogConfig -
@@ -98,6 +99,7 @@ func GenerateDefaultConfig(opt ...interface{}) (e error) {
         IgnoreCertificateCheck: false,
         JwtKey: "ChangeThisKeyInYourSystem",
         Logdbpath: "logs.db",
+        LogRetention: "90d",
         Dbtimeout: "45s",
         Commands: []Command {
             {

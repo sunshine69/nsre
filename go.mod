@@ -9,6 +9,7 @@ require (
 	github.com/gorilla/mux v1.7.3
 	github.com/gorilla/sessions v1.2.0
 	github.com/json-iterator/go v1.1.8
+	github.com/mileusna/crontab v0.0.0-20180909013013-f182897de5d8
 	github.com/nxadm/tail v1.4.4
 	golang.org/x/oauth2 v0.0.0-20191122200657-5d9234df094c
 	gopkg.in/yaml.v2 v2.2.7
