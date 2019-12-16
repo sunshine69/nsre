@@ -46,6 +46,15 @@ func BackupConfig(configFile *string) {
 	}
 }
 
+func RunScheduleTasks() {
+	ctab := crontab.New() // create cron table
+    // AddJob and test the errors
+    if err := ctab.AddJob("1 0 1 * *", cmd.DatabaseMaintenance); err != nil {
+        log.Printf("WARN - Can not add maintanance job - %v\n", err)
+	}
+
+}
+
 func main() {
 
 	defaultConfig :=  filepath.Join(os.Getenv("HOME"), ".nsre.yaml")
@@ -94,13 +103,6 @@ func main() {
 		}
 	}
 
-	ctab := crontab.New() // create cron table
-
-    // AddJob and test the errors
-    if err := ctab.AddJob("1 0 1 * *", cmd.DatabaseMaintenance); err != nil {
-        log.Printf("WARN - Can not add maintanance job - %v\n", err)
-	}
-
 	seek := tail.SeekInfo{Offset: 0, Whence: 0}
 	tailCfg := tail.Config{
 		Location:    &seek,
@@ -121,6 +123,7 @@ func main() {
 
 	switch *mode {
 	case "server":
+		RunScheduleTasks()
 		go cmd.StartServer()
 		s := <-c
 		log.Printf("%s captured. Do cleaning up\n", s.String())
@@ -145,6 +148,7 @@ func main() {
 		exitCh1 <- s
 		s = <-exitCh1
 	case "tailserver":
+		RunScheduleTasks()
 		go cmd.StartServer()
 		time.Sleep(2 * time.Second)
 		exitCh1 := make(chan os.Signal)
