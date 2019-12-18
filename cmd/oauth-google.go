@@ -54,6 +54,7 @@ func OauthGoogleCallback(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
 		return
 	}
+	
 	log.Printf("TRY_LOGIN - user email: %s, ID: %s\n", user.Email, user.Id)
 
 	if (! user.Verified_email) || ! CheckAuthorizedUser(user.Email) {

@@ -56,7 +56,6 @@ func RunScheduleTasks() {
 }
 
 func main() {
-
 	defaultConfig :=  filepath.Join(os.Getenv("HOME"), ".nsre.yaml")
 	configFile := flag.String("c", defaultConfig, "Config file, default %s"+ defaultConfig)
 	mode := flag.String("m", "client", "run mode. Can be server|client|tail|tailserver|tailtest|cloudwatchlog|reset.\nserver - start nsca server and wait for command.\nclient - take another option -cmd which is the command to send to the server.\ntail - tail the log and send to the log server.\nreset - reset the config using default")

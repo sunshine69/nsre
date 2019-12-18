@@ -31,6 +31,8 @@ type LogFile struct {
     Timestrreplace []string //Do search/replace the capture before parse time. As go does not support , aas sec fraction this is to work around for this case.
     Pattern string //will be matched to extract the HOSTNAME APP-NAME MSG part of the line.
     Multilineptn string //detect if the line is part of the previous line
+    Excludepatterns []string //If log line match this pattern it will be excluded
+    Includepatterns []string
     Appname string //Overrite the appname of the logfile if not empty
 }
 //AppConfig -
@@ -123,6 +125,8 @@ func GenerateDefaultConfig(opt ...interface{}) (e error) {
                 Timestrreplace: []string{",", "."},
                 Pattern: `([^\s]+) ([^\s]+) (.*)$`,
                 Multilineptn: `([^\s]+.*)$`,
+                Excludepatterns: []string{},
+                Includepatterns: []string{},
                 Appname: "",
             },
         },
@@ -173,6 +177,8 @@ func GenerateDefaultConfig(opt ...interface{}) (e error) {
                 Timeadjust: "",
                 Pattern: `([^\s]+.*)$`,
                 Multilineptn: `^[\s]+([^\s]+.*)$`,
+                Excludepatterns: []string{},
+                Includepatterns: []string{},
                 Appname: appname,
             },
         }

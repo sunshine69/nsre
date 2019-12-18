@@ -209,6 +209,18 @@ func ProcessTailLines(cfg *TailLogConfig, tail *tail.Tail) {
 	linePtn = regexp.MustCompile(linePtnStr)
 	multiLinePtn = regexp.MustCompile(cfg.Multilineptn)
 
+	var excludePtns, includePatterns []*regexp.Regexp
+	for _, ptn := range(cfg.Excludepatterns) {
+		if ptn != ""{
+			excludePtns = append(excludePtns, regexp.MustCompile(ptn))
+		}
+	}
+	for _, ptn := range(cfg.Includepatterns) {
+		if ptn != ""{
+			includePatterns = append(includePatterns, regexp.MustCompile(ptn))
+		}
+	}
+
 	if cfg.Timepattern != "" {
 		timePtn = regexp.MustCompile(cfg.Timepattern)
 		log.Printf("INFO - time ptn: '%s'\nline ptn: '%s'\n", cfg.Timepattern, linePtnStr)
@@ -235,6 +247,19 @@ func ProcessTailLines(cfg *TailLogConfig, tail *tail.Tail) {
 
 	for line := range tailLines {
 		if line.Text == "" || line.Text == "\n" { continue }
+		mustInclude, excludeLine := false, false
+
+		for _, iPtn := range(includePatterns) {
+			mustInclude = iPtn.MatchString(line.Text)
+			if mustInclude { break }
+		}
+		if !mustInclude {
+			for _, iPtn := range(excludePtns) {
+				excludeLine = iPtn.MatchString(line.Text)
+				if excludeLine { break }
+			}
+		}
+		if excludeLine { continue }
 		// fmt.Printf("Processing LineText: '%s'\n", line.Text)
 		curSeek, _ := tail.Tell()
 		if IsEOF(tail.Filename, curSeek) {

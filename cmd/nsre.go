@@ -485,6 +485,6 @@ func DatabaseMaintenance() {
 	start, _ := ParseTimeRange(Config.LogRetention, "")
 	err := conn.Exec(fmt.Sprint(`DELETE FROM log WHERE timestamp < %d`, start.UnixNano()))
 	if err != nil {
-		log.Printf("ERROR - can not insert data for logline - %v\n", err)
+		log.Printf("ERROR - can not delete old data - %v\n", err)
 	}
 }
