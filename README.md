@@ -6,8 +6,8 @@ Nagios Simple Remote Execution and Log Server
 I need a fast and lightweight log server to store log in general *AND* a simple
 remote execution point (similar to nsca or nrpe) to answer nagios check.
 
-nsca and nsre does not meet as they dont store logs. And they are a bit big with
-many other features I dont need.
+nsca and nrpe does not meet as they dont store logs. And they are a bit big with
+many other features I don't need.
 
 For Logging I dont want elasticsearch because I have no budget for big server.
 And it does not has the remote executor ...
