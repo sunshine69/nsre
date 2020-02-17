@@ -44,12 +44,17 @@ func isAuthorized(endpoint func(http.ResponseWriter, *http.Request)) http.Handle
 
 func isOauthAuthorized(endpoint func(http.ResponseWriter, *http.Request)) http.Handler {
     return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
 		session, err := SessionStore.Get(r, "auth-session")
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 		useremail := session.Values["useremail"]
+		uri := r.RequestURI
+		uri = strings.TrimPrefix(uri, "/")
+		session.Values["current_uri"] = uri
+		session.Save(r, w)
 
 		if useremail == nil {
 			log.Printf("ERROR - No session\n")

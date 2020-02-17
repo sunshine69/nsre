@@ -54,7 +54,7 @@ func OauthGoogleCallback(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
 		return
 	}
-	
+
 	log.Printf("TRY_LOGIN - user email: %s, ID: %s\n", user.Email, user.Id)
 
 	if (! user.Verified_email) || ! CheckAuthorizedUser(user.Email) {
@@ -76,8 +76,8 @@ func OauthGoogleCallback(w http.ResponseWriter, r *http.Request) {
         http.Error(w, err.Error(), http.StatusInternalServerError)
         return
 	}
-
-	http.Redirect(w, r, "/searchlog", http.StatusSeeOther)
+	currentUri := session.Values["current_uri"].(string)
+	http.Redirect(w, r, "/" + currentUri, http.StatusSeeOther)
 }
 
 func generateStateOauthCookie(w http.ResponseWriter) string {
