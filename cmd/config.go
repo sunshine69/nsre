@@ -217,7 +217,9 @@ var CurrentYear, CurrentZone string
 
 var PasswordFilterPtns []*regexp.Regexp
 
-//LoadConfig -
+var JenkinsLogDataPattern *regexp.Regexp
+
+//LoadConfig - Load all config/global regex pattern required
 func LoadConfig(fPath string) (e error) {
     yamlStr, e := ioutil.ReadFile(fPath)
     if e != nil {
@@ -254,5 +256,6 @@ func LoadConfig(fPath string) (e error) {
 		HttpOnly: true,
     }
 
+    JenkinsLogDataPattern = regexp.MustCompile("\u001B\\[8mha\\:([^\u001B]+)\u001B\\[0m")
     return e
 }
