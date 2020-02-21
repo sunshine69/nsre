@@ -385,6 +385,26 @@ func SearchLog(keyword string, o *strings.Builder, sortorder, duration, tz strin
 	return DoSQLSearch(q, o)
 }
 
+func SendProcessCommand(w http.ResponseWriter, r *http.Request) {
+	userIPWithPort := ReadUserIP(r)
+	userIP := strings.Split(userIPWithPort, ":")[0]
+	fmt.Printf("DEBUG userID %s\n", userIP)
+	if userIP != "127.0.0.1" {
+		http.Error(w, "Permission denied", http.StatusForbidden)
+		return
+	}
+	vars := mux.Vars(r)
+	proto := vars["proto"]
+	port := vars["port"]
+	remoteNsreHost := vars["remote_nsre_host"]
+	remoteNsreURL := proto + "://" + remoteNsreHost + ":" + port
+	CommandName := vars["CommandName"]
+	//Send comand to remote
+	o := RunCommand(CommandName, "quiet", remoteNsreURL)
+	fmt.Fprintf(w, o)
+	return
+}
+
 //HandleRequests -
 func HandleRequests() {
 	router := mux.NewRouter()
@@ -395,6 +415,8 @@ func HandleRequests() {
 
 	router.Handle("/", isAuthorized(homePage)).Methods("GET")
 	router.Handle("/run/{CommandName}", isAuthorized(ProcessCommand)).Methods("GET")
+	//webhook - this should only allow request from localhost. the purpose is to allow some dumb app (like jira) to post/get to an url which is https://localhost/wh/<remote_nsre_dns_name>/<command_name>/ - translate the request and use the jwt auth to send request to the remote nsre server to process the command.
+	router.HandleFunc("/wh/{proto}/{remote_nsre_host}/{port:[0-9]+}/{CommandName}", SendProcessCommand).Methods("GET", "POST")
 
 	if Config.JwtKey == "" {
 		log.Printf("WARNING WARNING - JWTKEY is not set. Log server will allow anyone to put log in\n")

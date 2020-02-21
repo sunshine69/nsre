@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"net/http"
 	"io/ioutil"
 	"bytes"
 	"github.com/bvinc/go-sqlite-lite/sqlite3"
@@ -145,4 +146,24 @@ func SendAWSLogEvents(evts []*cloudwatchlogs.FilteredLogEvent, appNameStr string
 		}
 	}
 	return timeParsed.UnixNano() / NanosPerMillisecond
+}
+
+//ReadUserIP - parse the userIP:port from the request
+func ReadUserIP(r *http.Request) string {
+    IPAddress := r.Header.Get("X-Real-Ip")
+    if IPAddress == "" {
+        IPAddress = r.Header.Get("X-Forwarded-For")
+    }
+    if IPAddress == "" {
+		IPAddress = r.RemoteAddr
+	}
+    return IPAddress
+}
+
+func Ternary(cond bool, first, second interface{}) interface{} {
+	if cond {
+		return first
+	} else {
+		return second
+	}
 }

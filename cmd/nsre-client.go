@@ -22,7 +22,9 @@ func RunCommand(cmdName ...string) (string) {
     client := &http.Client{}
 	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: Config.IgnoreCertificateCheck}
 
-    req, _ := http.NewRequest("GET", strings.Join([]string{Config.Serverurl, "run", cmdName[0]}, "/"), nil)
+    serverURL := Ternary(len(cmdName) == 3, cmdName[2], Config.Serverurl).(string)
+
+    req, _ := http.NewRequest("GET", strings.Join([]string{serverURL, "run", cmdName[0]}, "/"), nil)
     req.Header.Set("Token", validToken)
 
     res, err := client.Do(req)
