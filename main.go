@@ -168,7 +168,7 @@ func main() {
 		log.Printf("Going to generate config...")
 		BackupConfig(configFile)
 		if generateDefaultConfig() != nil {
-			log.Fatalf("ERROR can not generate config file %v\n")
+			log.Fatalf("ERROR can not generate config file %s\n", *configFile)
 		}
 	case "tailtest":
 		cmd.TestTailLog(tailCfg, *tailFile)

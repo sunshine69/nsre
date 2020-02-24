@@ -308,11 +308,11 @@ func DoSQLSearch(q string, o *strings.Builder) (int) {
 	defer stmt.Close()
 	fmt.Fprintf(o, `
 	<table id="customers">
-		<col width="10%">
-		<col width="10%">
-		<col width="10%">
-		<col width="10%">
-		<col width="60%">
+		<col width="10%%">
+		<col width="10%%">
+		<col width="10%%">
+		<col width="10%%">
+		<col width="60%%">
 		<tr>
 			<th>TS</th>
 			<th>Date</th>
@@ -512,7 +512,7 @@ func DatabaseMaintenance() {
 	conn := GetDBConn()
 	defer conn.Close()
 	start, _ := ParseTimeRange(Config.LogRetention, "")
-	err := conn.Exec(fmt.Sprint(`DELETE FROM log WHERE timestamp < %d`, start.UnixNano()))
+	err := conn.Exec(fmt.Sprintf(`DELETE FROM log WHERE timestamp < %d`, start.UnixNano()))
 	if err != nil {
 		log.Printf("ERROR - can not delete old data - %v\n", err)
 	}
