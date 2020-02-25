@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"mime/multipart"
 	"bufio"
 	"regexp"
 	"time"
@@ -443,7 +444,20 @@ func DoUploadLog(w http.ResponseWriter, r *http.Request) {
 			fmt.Printf("Uploaded File: %+v\n", handler.Filename)
 			fmt.Printf("File Size: %+v\n", handler.Size)
 			fmt.Printf("MIME Header: %s\n", handler.Header["Content-Type"])
-			if ! strings.HasPrefix( handler.Header["Content-Type"][0], "text/") {
+
+			detectContentType := func(out multipart.File) (string, error) {
+				buffer := make([]byte, 512)
+				_, err := out.Read(buffer)
+				if err != nil {
+					return "", err
+				}
+				// Use the net/http package's handy DectectContentType function. Always returns a valid
+				// content-type by returning "application/octet-stream" if no others seemed to match.
+				contentType := http.DetectContentType(buffer)
+				return contentType, nil
+			}
+			contentType, _ := detectContentType(file)
+			if ! strings.HasPrefix( contentType, "text/") {
 				http.Error(w, "Uploaded file is not text tile", http.StatusBadRequest)
 			}
 			scanner := bufio.NewScanner(file)
