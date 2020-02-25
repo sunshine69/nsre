@@ -444,13 +444,14 @@ func DoUploadLog(w http.ResponseWriter, r *http.Request) {
 		message := r.FormValue("message")
 		conn := GetDBConn()
 		defer conn.Close()
-
-		message = FilterPassword(message, PasswordFilterPtns)
-		message = DecodeJenkinsConsoleNote(message)
-		err := conn.Exec(`INSERT INTO log(timestamp, datelog, host, application, logfile, message) VALUES (?, ?, ?, ?, ?, ?)`, time.Now().UnixNano(), time.Now().UnixNano(), host, application, logfile, message)
-		if err != nil {
-			log.Printf("ERROR - can not insert data for logline - %v\n", err)
-			http.Error(w, "ERROR", 500); return
+		if message != ""{
+			message = FilterPassword(message, PasswordFilterPtns)
+			message = DecodeJenkinsConsoleNote(message)
+			err := conn.Exec(`INSERT INTO log(timestamp, datelog, host, application, logfile, message) VALUES (?, ?, ?, ?, ?, ?)`, time.Now().UnixNano(), time.Now().UnixNano(), host, application, logfile, message)
+			if err != nil {
+				log.Printf("ERROR - can not insert data for logline - %v\n", err)
+				http.Error(w, "ERROR", 500); return
+			}
 		}
 		file, handler, err := r.FormFile("logfile")
 		if err != nil {
@@ -472,19 +473,21 @@ func DoUploadLog(w http.ResponseWriter, r *http.Request) {
 				contentType := http.DetectContentType(buffer)
 				return contentType, nil
 			}
-			contentType, _ := detectContentType(file)
+			contentType, _ := detectContentType(file); fmt.Printf("DEBUG - detectContentType %s\n",contentType)
 			if ! strings.HasPrefix( contentType, "text/") {
 				http.Error(w, "Uploaded file is not text tile", http.StatusBadRequest)
-			}
-			scanner := bufio.NewScanner(file)
-			for scanner.Scan() {
-				logline := scanner.Text()
-				logline = FilterPassword(logline, PasswordFilterPtns)
-				logline = DecodeJenkinsConsoleNote(logline)
-				err := conn.Exec(`INSERT INTO log(timestamp, datelog, host, application, logfile, message) VALUES (?, ?, ?, ?, ?, ?)`, time.Now().UnixNano(), time.Now().UnixNano(), host, application, logfile, logline)
-				if err != nil {
-					log.Printf("ERROR -logline can not insert data for logline - %v\n", err)
-					http.Error(w, "ERROR", 500)
+			} else {
+				scanner := bufio.NewScanner(file)
+				for scanner.Scan() {
+					logline := scanner.Text()
+					logline = FilterPassword(logline, PasswordFilterPtns)
+					logline = DecodeJenkinsConsoleNote(logline)
+					logfile = Ternary(logfile == "", handler.Filename, logfile).(string)
+					err := conn.Exec(`INSERT INTO log(timestamp, datelog, host, application, logfile, message) VALUES (?, ?, ?, ?, ?, ?)`, time.Now().UnixNano(), time.Now().UnixNano(), host, application, logfile, logline)
+					if err != nil {
+						log.Printf("ERROR -logline can not insert data for logline - %v\n", err)
+						http.Error(w, "ERROR", 500)
+					}
 				}
 			}
 		}
