@@ -503,14 +503,21 @@ func DumpPost(w http.ResponseWriter, r *http.Request) {
 		fmt.Println(err)
 	}
 	fmt.Printf("DEBUG Dump post request\n")
-	fmt.Println(string(requestDump))
+	fmt.Printf("DEBUG - dump %s\n",requestDump)
+
+	msg, _ := ioutil.ReadAll(r.Body)
+	fmt.Printf("DEBUG - Body %s\n",msg)
+
+	r.Body = ioutil.NopCloser(bytes.NewBuffer(msg))
 	e := r.ParseForm()
-	if e != nil { fmt.Printf("ERROR %v\n", e) }
-	fmt.Println(r.Form)
-	from := r.FormValue("From")
-	to := r.FormValue("To")
-	xml := r.FormValue("Twiml")
-	fmt.Printf("From %s, To %s - XML %s\n", from, to, xml)
+	if e != nil { fmt.Printf("DEBUG ERROR %v\n", e) }
+
+	From := r.FormValue("From")
+	fmt.Printf("DEBUG From %s\n", From)
+
+	fmt.Fprintf(w, "OK")
+	return
+
 }
 
 //HandleRequests -
@@ -542,7 +549,7 @@ func HandleRequests() {
 		router.HandleFunc("/twilio/events/{call_id}", ProcessTwilioCallEvent).Methods("POST")
 		twilioSid := GetConfig("twilio_sid")
 		twilioSec := GetConfig("twilio_sec")
-		router.Handle("/twilio/call", IsBasicAuth(MakeTwilioCall, twilioSid, twilioSec, "Twilio")).Methods("POST")
+		router.Handle("/twilio/{action:(?:call|sms)}", IsBasicAuth(MakeTwilioCall, twilioSid, twilioSec, "Twilio")).Methods("POST")
 		router.HandleFunc("/dumppost", DumpPost).Methods("POST")
 	}
 

@@ -39,7 +39,7 @@ func MsToTime(ms int64) time.Time {
 	return time.Unix(secs, nanos)
 }
 
-//ParseTimeRange -
+//ParseTimeRange - return a time range start/end based on now back to the Duration.
 func ParseTimeRange(durationStr, tz string) (time.Time, time.Time) {
 	var start, end time.Time
 	if tz == "" {
