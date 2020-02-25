@@ -259,3 +259,71 @@ func LoadConfig(fPath string) (e error) {
     JenkinsLogDataPattern = regexp.MustCompile("\u001B\\[8mha\\:([^\u001B]+)\u001B\\[0m")
     return e
 }
+
+//GetConfig - by key and return value. Give second arg as default value.
+func GetConfig(key ...string) (string) {
+	DB := GetDBConn()
+	defer DB.Close()
+	var val string
+    stmt, err := DB.Prepare("SELECT val FROM appconfig WHERE key = ?;", key[0] )
+    if err != nil {
+        log.Fatalf("ERROR GetConfig %v\n", err)
+    }
+    defer stmt.Close()
+    stmt.Step()
+    if err = stmt.Scan(&val); err != nil {
+        log.Printf("INFO GetConfigKey %v\n", err)
+    }
+    if val == "" {
+        log.Printf("INFO key not found\n")
+		argLen := len(key)
+		if argLen > 1 {
+			return key[1]
+		} else {
+			return ""
+		}
+    }
+	return val
+}
+
+//GetConfigSave -
+func GetConfigSave(key ...string) (string) {
+	v := GetConfig(key...)
+	if len(key) == 2 && v == key[1] {
+		SetConfig(key[0], key[1])
+	}
+	return v
+}
+
+//SetConfig - Set a config key with value
+func SetConfig(key, val string) {
+	curVal := GetConfig(key, "NOTFOUND")
+	DB := GetDBConn()
+	defer DB.Close()
+    DB.Begin()
+	if curVal != "NOTFOUND" {//Key exists, need update?
+		if curVal != val {
+			if e := DB.Exec(`UPDATE appconfig SET val = ? WHERE key = ?`, val, key); e != nil {
+				DB.Rollback()
+				log.Fatalf("ERROR %v\n", e)
+			}
+		}
+	} else {//Not exist, just do insert
+		if e := DB.Exec(`INSERT INTO appconfig(key, val) VALUES($1, $2)`, key, val); e != nil {
+			DB.Rollback()
+			log.Fatalf("ERROR %v\n", e)
+		}
+    }
+    DB.Commit()
+}
+
+//DeleteConfig - delete the config key
+func DeleteConfig(key string) {
+	DB := GetDBConn()
+	DB.Begin()
+	if e := DB.Exec(`DELETE FROM appconfig WHERE key = ?`, key); e !=nil {
+		DB.Rollback()
+		log.Fatalf("ERROR %v\n", e)
+	}
+	DB.Commit()
+}

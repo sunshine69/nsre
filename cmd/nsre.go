@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"mime/multipart"
+	"crypto/subtle"
 	"bufio"
 	"regexp"
 	"time"
@@ -18,6 +19,21 @@ import (
 	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/json-iterator/go"
 )
+
+func IsBasicAuth(endpoint func(http.ResponseWriter, *http.Request), username, password, realm string) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
+        user, pass, ok := r.BasicAuth()
+
+        if !ok || subtle.ConstantTimeCompare([]byte(user), []byte(username)) != 1 || subtle.ConstantTimeCompare([]byte(pass), []byte(password)) != 1 {
+            w.Header().Set("WWW-Authenticate", `Basic realm="`+realm+`"`)
+            w.WriteHeader(401)
+            w.Write([]byte("Unauthorised.\n"))
+            return
+        }
+        endpoint(w, r)
+    })
+}
 
 func isAuthorized(endpoint func(http.ResponseWriter, *http.Request)) http.Handler {
     return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -490,6 +506,7 @@ func HandleRequests() {
 	//webhook - this should only allow request from localhost. the purpose is to allow some dumb app (like jira) to post/get to an url which is https://localhost/wh/<remote_nsre_dns_name>/<command_name>/ - translate the request and use the jwt auth to send request to the remote nsre server to process the command.
 	router.HandleFunc("/wh/{proto}/{remote_nsre_host}/{port:[0-9]+}/{CommandName}", SendProcessCommand).Methods("GET", "POST")
 
+	//Probably we should drop the non jwt key section and enforce the use of jwt key all the time
 	if Config.JwtKey == "" {
 		log.Printf("WARNING WARNING - JWTKEY is not set. Log server will allow anyone to put log in\n")
 		router.HandleFunc("/log/{idx_name}/{type_name}/{unique_id}", ProcessLog).Methods("POST")
@@ -500,6 +517,12 @@ func HandleRequests() {
 		router.Handle("/log/{idx_name}/{type_name}", isAuthorized(ProcessLog)).Methods("POST")
 		router.Handle("/log/load", isOauthAuthorized(DoUploadLog)).Methods("POST", "GET")
 		router.Handle("/log", isAuthorized(ProcessLog)).Methods("POST")
+
+		//Twilio app
+		router.HandleFunc("/twilio/events/{call_id}", ProcessTwilioCallEvent).Methods("POST")
+		twilioSid := GetConfig("twilio_sid")
+		twilioSec := GetConfig("twilio_sec")
+		router.Handle("/twilio/call", IsBasicAuth(MakeTwilioCall, twilioSid, twilioSec, "Twilio")).Methods("POST")
 	}
 
 	srv := &http.Server{
@@ -536,9 +559,24 @@ func SetUpLogDatabase() {
 	// PRAGMA main.synchronous=OFF;
 	// `)
 	err := conn.Exec(`
-	CREATE TABLE IF NOT EXISTS log(id integer primary key autoincrement,timestamp int, datelog int, host text, application text, logfile text, message text);
+	CREATE TABLE IF NOT EXISTS log(
+		id integer primary key autoincrement,
+		timestamp int,
+		datelog int,
+		host text,
+		application text,
+		logfile text,
+		message text);
+
 	CREATE TABLE IF NOT EXISTS user(id integer primary key autoincrement, username text, email text UNIQUE);
 	CREATE UNIQUE INDEX IF NOT EXISTS t_host_idx ON log(timestamp, host, datelog, application);
+
+	CREATE TABLE IF NOT EXISTS appconfig(
+		key text,
+		val text
+	);
+	CREATE UNIQUE INDEX IF NOT EXISTS appconfigkeyidx ON appconfig(key);
+
 	PRAGMA main.page_size = 4096;
 	PRAGMA main.cache_size=10000;
 	PRAGMA main.locking_mode=EXCLUSIVE;
