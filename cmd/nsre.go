@@ -405,6 +405,20 @@ func SendProcessCommand(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
+//Present a simple form to allow user to create a log entry. Or upload a text file and parse log
+func DoUploadLog(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case "GET":
+		tString := LoadTemplate("templates/load_log_form.go.html")
+		t := template.Must(template.New("load_log_form").Parse(tString))
+		t.Execute(w, map[string]interface{}{
+		})
+		return
+	case "POST":
+		
+	}
+}
+
 //HandleRequests -
 func HandleRequests() {
 	router := mux.NewRouter()
@@ -426,6 +440,7 @@ func HandleRequests() {
 	} else{
 		router.Handle("/log/{idx_name}/{type_name}/{unique_id}", isAuthorized(ProcessLog)).Methods("POST")
 		router.Handle("/log/{idx_name}/{type_name}", isAuthorized(ProcessLog)).Methods("POST")
+		router.Handle("/log/load", isAuthorized(DoUploadLog)).Methods("POST", "GET")
 		router.Handle("/log", isAuthorized(ProcessLog)).Methods("POST")
 	}
 

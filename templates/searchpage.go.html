@@ -49,7 +49,9 @@
 				<td><input type="checkbox" name="sortorder" value="DESC" {{ .sortorder }}>Sort Descending</td>
 				<td><input name="duration" id="duration" type="text" value="{{ .duration }}" title="Time range, eg. 15m for 15 minutes ago. Or dd/mm/yyyy hh:mm:ss - dd/mm/yyyy hh:mm:ss"/></td>
 				<td><input name="tz" id="tz" type="text" value="{{ .tz }}" title="TimeZone"/></td>
-				<td><input type="submit" value="save_values" name="save_values" title="used to save the current values to session. It should autosave in POST request but if you want to filter record by id and narrow down the time range which might be different from the previous post request, adjust the time frame and click this button. Then go back to page and click the link by ID again"></td>
+				<td><input type="submit" value="save_values" name="save_values" title="used to save the current values to session. It should autosave in POST request but if you want to filter record by id and narrow down the time range which might be different from the previous post request, adjust the time frame and click this button. Then go back to page and click the link by ID again">
+				&nbsp;<a href="/log/load">Log Manually</a>
+				</td>
             </tr>
             <tr>
 				<td colspan="2" align="center">
