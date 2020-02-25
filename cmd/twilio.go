@@ -56,6 +56,8 @@ func MakeTwilioCall(w http.ResponseWriter, r *http.Request) {
 	//Twilio will post to this url + /<my_call_sid>
 	twilioStatusCallBack := GetConfigSave("twilio_callback", "https://log.xvt.technology/twilio/events/")
 	twilioCallUrl := GetConfigSave("twilio_url", "https://api.twilio.com/2010-04-01/Accounts/" + twilioSid + "/Calls.json")
+	// twilioCallUrl = "https://note.xvt.technology:8000/dumppost"
+
 	// twilioSmslUrl := GetConfigSave("twilio_url", "https://api.twilio.com/2010-04-01/Accounts/" + twilioSid + "/Messages.json")
 
 	Twiml := `<?xml version="1.0" encoding="UTF-8"?><Response><Say voice="alice">` + Body + `</Say></Response>`
@@ -72,14 +74,16 @@ func MakeTwilioCall(w http.ResponseWriter, r *http.Request) {
 
 	makeCall := func() {
 		encodedData := formData.Encode()
+		fmt.Printf("DEBUG %s\n", encodedData)
 		req, _ := http.NewRequest("POST", twilioCallUrl , strings.NewReader(encodedData))
 		req.SetBasicAuth(twilioSid, twilioSec)
-		r.Header.Add("Content-Type", "application/x-www-form-urlencoded")
-		r.Header.Add("Content-Length", strconv.Itoa(len(encodedData)))
+		req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+		req.Header.Add("Content-Length", strconv.Itoa(len(encodedData)))
+
 		client := &http.Client{}
 		res, err := client.Do(req)
 		if err != nil {
-			log.Printf("ERROR MakeTwilioCall %v\n", err)
+			log.Printf("ERROR MakeTwilioCall Send Req %v\n", err)
 			http.Error(w, fmt.Sprintf("ERROR %v", err), 500)
 			return
 		}
@@ -87,7 +91,7 @@ func MakeTwilioCall(w http.ResponseWriter, r *http.Request) {
 
 		body, err := ioutil.ReadAll(res.Body)
 		if err != nil {
-			log.Printf("ERROR MakeTwilioCall %v\n", err)
+			log.Printf("ERROR MakeTwilioCall Get Response %v\n", err)
 			http.Error(w, fmt.Sprintf("ERROR %v", err), 500)
 			return
 		}
@@ -126,12 +130,12 @@ func MakeTwilioCall(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		if action == "exit" { break }
-		if tryCount > 2 {
+		time.Sleep(15 * time.Second)
+		if tryCount > 3 {
 			log.Printf("INFO TryCount exeeded %d\n", tryCount)
 			action = "fail"
 			break
 		}
-		time.Sleep(15 * time.Second)
 	}
 }
 

@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"net/http/httputil"
 	"mime/multipart"
 	"crypto/subtle"
 	"bufio"
@@ -496,6 +497,22 @@ func DoUploadLog(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func DumpPost(w http.ResponseWriter, r *http.Request) {
+	requestDump, err := httputil.DumpRequest(r, true)
+	if err != nil {
+		fmt.Println(err)
+	}
+	fmt.Printf("DEBUG Dump post request\n")
+	fmt.Println(string(requestDump))
+	e := r.ParseForm()
+	if e != nil { fmt.Printf("ERROR %v\n", e) }
+	fmt.Println(r.Form)
+	from := r.FormValue("From")
+	to := r.FormValue("To")
+	xml := r.FormValue("Twiml")
+	fmt.Printf("From %s, To %s - XML %s\n", from, to, xml)
+}
+
 //HandleRequests -
 func HandleRequests() {
 	router := mux.NewRouter()
@@ -526,6 +543,7 @@ func HandleRequests() {
 		twilioSid := GetConfig("twilio_sid")
 		twilioSec := GetConfig("twilio_sec")
 		router.Handle("/twilio/call", IsBasicAuth(MakeTwilioCall, twilioSid, twilioSec, "Twilio")).Methods("POST")
+		router.HandleFunc("/dumppost", DumpPost).Methods("POST")
 	}
 
 	srv := &http.Server{
