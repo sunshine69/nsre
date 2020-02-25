@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Load Log</title>
+</head>
+<body>
+<form method="POST" action="/log/load" id="log_load_form" enctype="multipart/form-data">
+    <fieldset>
+    <legend>Log Creation Form</legend>
+    <table>
+        <tr>
+            <td title="value for the host field.">Host:</td>
+            <td><input type="text" name="host" value="manual" size="35"/></td>
+        </tr>
+        <tr>
+            <td title="value for the application field">Application:</td>
+            <td><input type="text" name="application" value="user" size="35"/></td>
+        </tr>
+        <tr>
+            <td title="value for the logfile field (the one display when hover the mouse on the row)">file:</td>
+            <td><input type="text" name="logfile" value="" size="35"/></td>
+        </tr>
+        <tr>
+            <td title="value for the message field">Message:</td>
+            <td><textarea name="message" wrap="soft" autocomplete="on"
+                cols="150" rows="25"></textarea></td>
+        </tr>
+        <tr>
+            <td>Upload a log file</td>
+            <td><input type="file" name="logfile"/></td>
+        </tr>
+        <tr>
+            <td colspan="2">
+                <input type="submit" name="submit" value="submit">
+                <input type="reset" name="reset" value="reset">
+            </td>
+        </tr>
+    </table>
+    </fieldset>
+
+</form>
+</body>
+</html>

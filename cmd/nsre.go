@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"mime/multipart"
+	"bufio"
 	"regexp"
 	"time"
 	"strconv"
@@ -308,11 +310,11 @@ func DoSQLSearch(q string, o *strings.Builder) (int) {
 	defer stmt.Close()
 	fmt.Fprintf(o, `
 	<table id="customers">
-		<col width="10%">
-		<col width="10%">
-		<col width="10%">
-		<col width="10%">
-		<col width="60%">
+		<col width="10%%">
+		<col width="10%%">
+		<col width="10%%">
+		<col width="10%%">
+		<col width="60%%">
 		<tr>
 			<th>TS</th>
 			<th>Date</th>
@@ -405,6 +407,76 @@ func SendProcessCommand(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
+const MaxUploadSizeInMemory = 4 * 1024 * 1024 // 4 MB
+const MaxUploadSize = 4 * 1024 * 1024 * 1024
+//Present a simple form to allow user to create a log entry. Or upload a text file and parse log
+func DoUploadLog(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case "GET":
+		tString := LoadTemplate("templates/load_log_form.go.html")
+		t := template.Must(template.New("load_log_form").Parse(tString))
+		t.Execute(w, map[string]interface{}{
+		})
+		return
+	case "POST":
+		if err := r.ParseMultipartForm(MaxUploadSizeInMemory); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+		}
+		host := r.FormValue("host")
+		application := r.FormValue("application")
+		logfile := r.FormValue("logfile")
+		message := r.FormValue("message")
+		conn := GetDBConn()
+		defer conn.Close()
+
+		message = FilterPassword(message, PasswordFilterPtns)
+		message = DecodeJenkinsConsoleNote(message)
+		err := conn.Exec(`INSERT INTO log(timestamp, datelog, host, application, logfile, message) VALUES (?, ?, ?, ?, ?, ?)`, time.Now().UnixNano(), time.Now().UnixNano(), host, application, logfile, message)
+		if err != nil {
+			log.Printf("ERROR - can not insert data for logline - %v\n", err)
+			http.Error(w, "ERROR", 500); return
+		}
+		file, handler, err := r.FormFile("logfile")
+		if err != nil {
+			fmt.Printf("No logfile uploaded %v\n", err)
+		} else {
+			defer file.Close()
+			fmt.Printf("Uploaded File: %+v\n", handler.Filename)
+			fmt.Printf("File Size: %+v\n", handler.Size)
+			fmt.Printf("MIME Header: %s\n", handler.Header["Content-Type"])
+
+			detectContentType := func(out multipart.File) (string, error) {
+				buffer := make([]byte, 512)
+				_, err := out.Read(buffer)
+				if err != nil {
+					return "", err
+				}
+				// Use the net/http package's handy DectectContentType function. Always returns a valid
+				// content-type by returning "application/octet-stream" if no others seemed to match.
+				contentType := http.DetectContentType(buffer)
+				return contentType, nil
+			}
+			contentType, _ := detectContentType(file)
+			if ! strings.HasPrefix( contentType, "text/") {
+				http.Error(w, "Uploaded file is not text tile", http.StatusBadRequest)
+			}
+			scanner := bufio.NewScanner(file)
+			for scanner.Scan() {
+				logline := scanner.Text()
+				logline = FilterPassword(logline, PasswordFilterPtns)
+				logline = DecodeJenkinsConsoleNote(logline)
+				err := conn.Exec(`INSERT INTO log(timestamp, datelog, host, application, logfile, message) VALUES (?, ?, ?, ?, ?, ?)`, time.Now().UnixNano(), time.Now().UnixNano(), host, application, logfile, logline)
+				if err != nil {
+					log.Printf("ERROR -logline can not insert data for logline - %v\n", err)
+					http.Error(w, "ERROR", 500)
+				}
+			}
+		}
+		fmt.Fprintf(w, "OK Log saved.")
+		return
+	}
+}
+
 //HandleRequests -
 func HandleRequests() {
 	router := mux.NewRouter()
@@ -426,6 +498,7 @@ func HandleRequests() {
 	} else{
 		router.Handle("/log/{idx_name}/{type_name}/{unique_id}", isAuthorized(ProcessLog)).Methods("POST")
 		router.Handle("/log/{idx_name}/{type_name}", isAuthorized(ProcessLog)).Methods("POST")
+		router.Handle("/log/load", isOauthAuthorized(DoUploadLog)).Methods("POST", "GET")
 		router.Handle("/log", isAuthorized(ProcessLog)).Methods("POST")
 	}
 
@@ -512,7 +585,7 @@ func DatabaseMaintenance() {
 	conn := GetDBConn()
 	defer conn.Close()
 	start, _ := ParseTimeRange(Config.LogRetention, "")
-	err := conn.Exec(fmt.Sprint(`DELETE FROM log WHERE timestamp < %d`, start.UnixNano()))
+	err := conn.Exec(fmt.Sprintf(`DELETE FROM log WHERE timestamp < %d`, start.UnixNano()))
 	if err != nil {
 		log.Printf("ERROR - can not delete old data - %v\n", err)
 	}
