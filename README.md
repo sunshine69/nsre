@@ -26,6 +26,14 @@ As of this time I dont use fts yet so you can remove it. Maybe in the future?
 go build --tags "icu json1 fts5 secure_delete" -ldflags='-s -w'
 ```
 
+To build a static binary on Linux using alpine image just do (you may need to edit the build-static.sh to suite your need)
+
+```
+docker build -t golang-alpine-build:latest -f Dockerfile.nsre-alpine-build  .
+./build-static.sh
+```
+
+
 On windows you need to install and setup golang, git and
 [msys2](http://www.msys2.org/). Golang sqlite3 driver uses cgo thus you need
 gcc, install from msys2. Please refer to each documentation guide to get it done.
@@ -257,7 +265,6 @@ nssm set nsre AppDirectory "C:\ansible_install\nsre"
 
 ### Sample complete config file
 
-
 ```
 # Server listen port
 port: 8000
@@ -314,5 +321,9 @@ passwordfilterpattern:
 # See example above
 awslogs: []
 ```
+
+### Twilio call and sms proxying
+
+See comment in `cmd/twilio.go` for more information.
 
 END OF DOCUMENT
