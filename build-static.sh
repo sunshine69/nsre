@@ -7,6 +7,10 @@
 VER=$(git rev-parse --short HEAD)
 sed -i "s/const Version = .*/const Version = \"${VER}\"/" cmd/version.go
 
+echo "If you change templates while deloping remember to run "
+echo "go-bindata -fs -nomemcopy -o cmd/bindata.go -pkg cmd  templates/..."
+echo "and then commit changes into git."
+
 #docker run --rm -v $(pwd):/work --workdir /work --entrypoint go nsre-alpine-build:latest build --tags "icu json1 fts5 secure_delete" --ldflags '-extldflags "-static" -w -s' -o nsre-linux-amd64-static
 
 docker rm -f golang-alpine-build

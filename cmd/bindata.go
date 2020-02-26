@@ -202,7 +202,7 @@ func templatesLoad_log_formGoHtml() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "templates/load_log_form.go.html", size: 1395, mode: os.FileMode(420), modTime: time.Unix(1582596848, 0)}
+	info := bindataFileInfo{name: "templates/load_log_form.go.html", size: 1395, mode: os.FileMode(420), modTime: time.Unix(1582603806, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -222,7 +222,7 @@ func templatesSearchpageGoHtml() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "templates/searchpage.go.html", size: 2524, mode: os.FileMode(436), modTime: time.Unix(1582601714, 0)}
+	info := bindataFileInfo{name: "templates/searchpage.go.html", size: 2524, mode: os.FileMode(420), modTime: time.Unix(1582603806, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
