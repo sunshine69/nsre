@@ -9,12 +9,14 @@ remote execution point (similar to nsca or nrpe) to answer nagios check.
 nsca and nrpe does not meet as they dont store logs. And they are a bit big with
 many other features I don't need.
 
-For Logging I dont want elasticsearch because I have no budget for big server.
+For Logging I don't want elasticsearch because I have no budget for big server.
 And it does not has the remote executor ...
 
 So my requirements are pretty unique but suitable in a DevOps case that a place
 to sotre pretty much all kind of logs and offer a simple search interface. And a
 remote executor for nagios plugin. And can run a AWS t2.nano instance.
+
+This can be a foundation for many sysadmin utilities due to the power of golang!
 
 # Quick Start
 

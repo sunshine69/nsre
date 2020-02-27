@@ -548,10 +548,14 @@ func HandleRequests() {
 
 		//Twilio app
 		router.HandleFunc("/twilio/events/{call_id}", ProcessTwilioCallEvent).Methods("POST")
+		router.HandleFunc("/twilio/gather/{call_id}", ProcessTwilioGatherEvent).Methods("POST")
 		twilioSid := GetConfig("twilio_sid")
 		twilioSec := GetConfig("twilio_sec")
 		router.Handle("/twilio/{action:(?:call|sms)}", IsBasicAuth(MakeTwilioCall, twilioSid, twilioSec, "Twilio")).Methods("POST")
 		// router.HandleFunc("/dumppost", DumpPost).Methods("POST")
+
+		//Nagios commands
+		router.Handle("/nagios/{command}", isAuthorized(ProcessNagiosCommand)).Methods("POST")
 	}
 
 	srv := &http.Server{
