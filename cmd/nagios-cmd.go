@@ -41,11 +41,11 @@ func ProcessNagiosCommand(w http.ResponseWriter, r *http.Request) {
 
 func HandleNagiosServiceACK(w *http.ResponseWriter, r *http.Request) {
 	nagiosCmdFile := GetConfigSave("nagios_cmd_file", "/var/spool/nagios/cmd/nagios.cmd")
-	r.ParseForm()
 	host := r.FormValue("host")
 	serviceDecs := r.FormValue("service")
 	user := r.FormValue("user")
 	data := fmt.Sprintf("[%d] ACKNOWLEDGE_SVC_PROBLEM;%s;%s;2;1;1;%s;Acknowledgement From Twilio\n", time.Now().Unix(), host, serviceDecs, user)
+	fmt.Printf("DEBUG data going to send to nagios '%s'\n", data)
     if err := ioutil.WriteFile(nagiosCmdFile, []byte(data), 0644); err != nil {
 		fmt.Printf("ERROR writting to nagios cmd file - %v\n", err)
 		http.Error(*w, "ERROR", 500); return

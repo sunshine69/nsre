@@ -60,6 +60,7 @@ var json = jsoniter.ConfigCompatibleWithStandardLibrary
 func ProcessTwilioGatherEvent(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	Digit := r.FormValue("Digits")
+	fmt.Printf("DEBUG ProcessTwilioGatherEvent We got Digit '%s'\n", Digit)
 
 	switch Digit {
 	case "4"://ACK
@@ -70,7 +71,7 @@ func ProcessTwilioGatherEvent(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		Host := json.Get([]byte(extraInfo), "Host").ToString()
-		Service := json.Get([]byte(extraInfo), "Host").ToString()
+		Service := json.Get([]byte(extraInfo), "Service").ToString()
 
 		nagiosNsreBaseURL := GetConfig("nagios_nsre_url", "")
 		if nagiosNsreBaseURL == "" { log.Fatalln("ERROR FATAL This feature requires the appconfig key nagios_nsre_url. Please use sqlite3 command to insert a record into the log database. The value of the key is the base url of the nsre instance runs on the nagios server which has the endpoint /nagios/{command} to write nagios command to the command file") }
@@ -82,12 +83,13 @@ func ProcessTwilioGatherEvent(w http.ResponseWriter, r *http.Request) {
 		command := Ternary(Service == "", "host_ack", "service_ack").(string)
 
 		formData := url.Values{
-			"host": {Host},
-			"service": {Service},
+			"host": { Host },
+			"service": { Service },
 			"user": {user},
 		}
 		req, _ := http.NewRequest("POST", nagiosNsreBaseURL + "/nagios/" + command, strings.NewReader(formData.Encode()))
 		req.Header.Set("Token", validToken)
+		req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 
 		res, err := client.Do(req)
 		if err != nil {
