@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"crypto/tls"
 	"bytes"
 	"strconv"
 	"strings"
@@ -32,33 +33,86 @@ insert into appconfig(key, val) values("twilio_sec","YOUR_TWILIO_SECRET");
 To make a call you can curl this server like the same way you curl the twilio api, only difference is that this server will try 10 times if the call/sms fail for a reason. And it logs the communication in the log server itself.
 
 curl -X POST https://YOUR_LOG_SRV_DNS/twilio/sms \
---data-urlencode "To=+XXX" \
---data-urlencode "From=+XXX" \
---data-urlencode "Body=Test message" \
--u YOU_TWILIO_SID:YOUR_TWILIO_SECRET
+	--data-urlencode "To=+XXX" \
+	--data-urlencode "From=+XXX" \
+	--data-urlencode "Body=Test message" \
+	--data-urlencode "Host=Nagios Host Name" \
+	--data-urlencode "Service=Nagios Service Description" \
+	-u YOU_TWILIO_SID:YOUR_TWILIO_SECRET
 
 # Unlike using Twilio API you do not make your Twml when calling. This server will craft this.
 curl -X POST https://YOUR_LOG_SRV_DNS/twilio/call \
 	--data-urlencode "To=+XXX" \
 	--data-urlencode "From=+XXX" \
 	--data-urlencode "Body=Test message" \
+	--data-urlencode "Host=Nagios Host Name" \
+	--data-urlencode "Service=Nagios Service Description" \
 	-u YOU_TWILIO_SID:YOUR_TWILIO_SECRET
 
+The Host and Service is included to allow the the nagios Acked from the phone.
+If not supplying Service that means it is a Host notification.
 */
 
 var json = jsoniter.ConfigCompatibleWithStandardLibrary
+
+//Take the action posted by Twilio and process logic. It may write back a call control TwiML or just do something and stop
+
+func ProcessTwilioGatherEvent(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	Digit := r.FormValue("Digits")
+	fmt.Printf("DEBUG ProcessTwilioGatherEvent We got Digit '%s'\n", Digit)
+
+	switch Digit {
+	case "4"://ACK
+		myCallId := vars["call_id"]
+		user := r.FormValue("To") //Use number to identify user
+		currentItem, extraInfo := GetTwilioCall(myCallId)
+		if currentItem == "" {//No previous call.
+			return
+		}
+		Host := json.Get([]byte(extraInfo), "Host").ToString()
+		Service := json.Get([]byte(extraInfo), "Service").ToString()
+
+		nagiosNsreBaseURL := GetConfig("nagios_nsre_url", "")
+		if nagiosNsreBaseURL == "" { log.Fatalln("ERROR FATAL This feature requires the appconfig key nagios_nsre_url. Please use sqlite3 command to insert a record into the log database. The value of the key is the base url of the nsre instance runs on the nagios server which has the endpoint /nagios/{command} to write nagios command to the command file") }
+		validToken, _ := GenerateJWT()
+
+		client := &http.Client{}
+		http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: Config.IgnoreCertificateCheck}
+
+		command := Ternary(Service == "", "host_ack", "service_ack").(string)
+
+		formData := url.Values{
+			"host": { Host },
+			"service": { Service },
+			"user": {user},
+		}
+		req, _ := http.NewRequest("POST", nagiosNsreBaseURL + "/nagios/" + command, strings.NewReader(formData.Encode()))
+		req.Header.Set("Token", validToken)
+		req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+
+		res, err := client.Do(req)
+		if err != nil {
+			fmt.Printf("ERROR - %v", err)
+		}
+		defer res.Body.Close()
+		if res.StatusCode != 200 {
+			http.Error(w, "ERROR when talking to nagios cmd", 500); return
+		}
+		fmt.Fprintf(w, "OK"); return
+	}
+}
 
 func ProcessTwilioCallEvent(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	myCallId := vars["call_id"]
 
-	currentItem := GetTwilioCall(myCallId)
+	currentItem, extraInfo := GetTwilioCall(myCallId)
 	if currentItem == "" {//No previous call.
 		return
 	}
 	rawMessage, _ := ioutil.ReadAll(r.Body)
 	r.Body = ioutil.NopCloser(bytes.NewBuffer(rawMessage))//restore body for parseform
-	r.ParseForm()
 
 	//We only care about MessageStatus and CallStatus
 	msg := fmt.Sprintf(`{
@@ -75,7 +129,7 @@ func ProcessTwilioCallEvent(w http.ResponseWriter, r *http.Request) {
 		Datelog: time.Now().UnixNano(),
 		Host: "twilio_call",
 		Application: myCallId,
-		Logfile: "",
+		Logfile: extraInfo,
 		Message: msg,
 	}
 	data, _ := json.Marshal(logData)
@@ -88,24 +142,35 @@ func MakeTwilioCall(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	reqAction := vars["action"]
 
-	r.ParseForm()
 	Body := r.FormValue("Body")
 	From := r.FormValue("From")
 	To := r.FormValue("To")
-	fmt.Printf("DEBUG Body: %s - From: %s - To: %s\n", Body, From, To)
+	//These data is saved to get back to nagios in the Gather action
+	Host := r.FormValue("Host")
+	Service := r.FormValue("Service")
+	fmt.Printf("DEBUG Body: %s - From: %s - To: %s Host: '%s' - Service: '%s'\n", Body, From, To, Host, Service)
+
 	twilioSid := GetConfig("twilio_sid")
 	twilioSec := GetConfig("twilio_sec")
 	//Twilio will post to this url + /<my_call_sid>
-	twilioStatusCallBack := GetConfigSave("twilio_callback", "https://log.xvt.technology/twilio/events/")
+	twilioStatusCallBack := GetConfigSave("twilio_callback", fmt.Sprintf("https://%s/twilio/events/", Config.Serverdomain))
 
 	twilioCallUrl, Twiml := "", ""
 	myCallId := uuid.New().String()
 	formData := url.Values{}
+	gatherActionURL := GetConfigSave("gather_action_url", fmt.Sprintf("https://%s/twilio/gather/%s", Config.Serverdomain, myCallId))
 
 	switch reqAction {
 	case "call":
 		twilioCallUrl = GetConfigSave("twilio_call_url", "https://api.twilio.com/2010-04-01/Accounts/" + twilioSid + "/Calls.json")
-		Twiml = `<?xml version="1.0" encoding="UTF-8"?><Response><Say voice="alice">` + Body + `</Say></Response>`
+		Twiml = fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
+			<Response>
+				<Say voice="alice">%s</Say>
+				<Gather input="speech dtmf" timeout="5" numDigits="4" action="%s" method="POST">
+					<Say>Please press 4 to acknowledge</Say>
+				</Gather>
+			</Response>`, Body, gatherActionURL)
+
 		formData = url.Values{
 			"Twiml": { Twiml },
 			"From": { From },
@@ -150,18 +215,14 @@ func MakeTwilioCall(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, fmt.Sprintf("ERROR %v", err), 500)
 			return
 		}
-
-		callSid := json.Get(body, "sid").ToString()
-
 		logData := LogData{
 			Timestamp: time.Now().UnixNano(),
 			Datelog: time.Now().UnixNano(),
 			Host: "twilio_call",
 			Application: myCallId,
-			Logfile: callSid,
+			Logfile: fmt.Sprintf(`{ "Host": "%s", "Service": "%s" }`, Host, Service),
 			Message: string(body),
 		}
-
 		data, _ := json.Marshal(logData)
 		InsertLog(data)
 	}
@@ -170,7 +231,7 @@ func MakeTwilioCall(w http.ResponseWriter, r *http.Request) {
 		action := ""
 		for {//Call and re-call if call fail
 			tryCount = tryCount + 1
-			existingCall := GetTwilioCall(myCallId)
+			existingCall, _ := GetTwilioCall(myCallId)
 			fmt.Printf("DEBUG count: %d - existingCall '%s'\nAction: '%s'\n", tryCount, existingCall, action)
 			if existingCall == "" || action == "make_call" { //New call
 				makeCall()
@@ -216,14 +277,15 @@ func MakeTwilioCall(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
-func GetTwilioCall(myCallId string) string {
+//GetTwilioCall - Get call info from the trace of events log. We utilize the field logfile to add the nagios host and service info for the Gather Action or anything later on to use.
+func GetTwilioCall(myCallId string) (string, string) {
 	DB := GetDBConn(); defer DB.Close()
 	start, end := ParseTimeRange("1h", "AEST")
-	stmt, e := DB.Prepare(`SELECT message from log WHERE ((timestamp > ?) AND (timestamp < ?)) AND  application = ? ORDER BY timestamp DESC`, start.UnixNano(), end.UnixNano(), myCallId)
+	stmt, e := DB.Prepare(`SELECT message, logfile from log WHERE ((timestamp > ?) AND (timestamp < ?)) AND  application = ? ORDER BY timestamp DESC`, start.UnixNano(), end.UnixNano(), myCallId)
 	if e != nil { fmt.Printf("ERROR %v\n", e) }
 	defer stmt.Close()
 	stmt.Step()
-	var body string
-	stmt.Scan(&body)
-	return body
+	var message, logfile string
+	stmt.Scan(&message, &logfile)
+	return message, logfile
 }
