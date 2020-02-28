@@ -32,16 +32,23 @@ func HandlePagerDutyEvent(w http.ResponseWriter, r *http.Request) {
 }
 
 func ProcessResolvedEvent(w *http.ResponseWriter, bodyDataByte []byte) {
+	alertKey := json.Get(bodyDataByte, "messages", 0, "incident", "alerts", 0, "alert_key").ToString()
+	event_source, host_name, service_desc := ParseAlertKey(alertKey)
+	if event_source == "" { fmt.Fprintf(*w, "UNEXPECTED ALERT KEY"); return }
+	if host_name == "" { fmt.Printf("ERROR HandlePagerDutyEvent - HOSTNAME NOT FOUND - Input line '%s'\n", alertKey); fmt.Fprintf(*w, "ERROR HOSTNAME NOT FOUND"); return }
+	if DoNagiosDeleteAllComment(host_name, service_desc) != 200 {
+		fmt.Printf("ERROR while calling DoNagiosDeleteAllComment. alert key is:\n'%s'\n", alertKey)
+		fmt.Fprintf(*w, "ERROR"); return
+	}
 	fmt.Fprintf(*w, "TODO"); return
 }
 
-func ProcessACKEvent(w *http.ResponseWriter, bodyDataByte []byte) {
-	alertKey := json.Get(bodyDataByte, "messages", 0, "incident", "alerts", 0, "alert_key").ToString()
+func ParseAlertKey(alertKey string) (string, string, string) {
 	var event_source, host_name, service_desc string
 	// sample text "event_source=service;host_name=xvt-aws-ansible;service_desc=check_xvt_services"
 	for _, item := range (strings.Split(alertKey, ";")) {
 		itemEqual := strings.Split(item, "=")
-		if len(itemEqual) != 2 { fmt.Printf("ERROR HandlePagerDutyEvent - Input line '%s'. Event source: %s\n", alertKey, event_source); fmt.Fprintf(*w, "UNEXPECTED DATA"); return }
+		if len(itemEqual) != 2 { fmt.Printf("ERROR HandlePagerDutyEvent - Input line '%s'. Event source: %s\n", alertKey, event_source); return "", "", "" }
 		switch itemEqual[0] {
 		case "event_source":
 			event_source = itemEqual[1]
@@ -51,7 +58,13 @@ func ProcessACKEvent(w *http.ResponseWriter, bodyDataByte []byte) {
 			service_desc = itemEqual[1]
 		}
 	}
-	if host_name == "" { fmt.Printf("ERROR HandlePagerDutyEvent - Input line '%s'\n", alertKey); fmt.Fprintf(*w, "UNEXPECTED DATA"); return }
+	return event_source, host_name, service_desc
+}
+func ProcessACKEvent(w *http.ResponseWriter, bodyDataByte []byte) {
+	alertKey := json.Get(bodyDataByte, "messages", 0, "incident", "alerts", 0, "alert_key").ToString()
+	event_source, host_name, service_desc := ParseAlertKey(alertKey)
+	if event_source == "" { fmt.Fprintf(*w, "UNEXPECTED ALERT KEY"); return }
+	if host_name == "" { fmt.Printf("ERROR HandlePagerDutyEvent - HOSTNAME NOT FOUND - Input line '%s'\n", alertKey); fmt.Fprintf(*w, "ERROR HOSTNAME NOT FOUND"); return }
 	comment := json.Get(bodyDataByte, "messages", 0, "log_entries", 0, "summary").ToString()
 	fmt.Printf("DEBUG going to call DoNagiosACK with data '%s' - '%s' - '%s'\n", host_name, service_desc, comment)
 	StatusCode := DoNagiosACK(host_name, service_desc, "PagerDutyPostBack", comment)
