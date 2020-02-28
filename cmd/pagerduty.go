@@ -19,6 +19,7 @@ To use this feature you need to insert into the appconfig table the key pagerdut
 
 func HandlePagerDutyEvent(w http.ResponseWriter, r *http.Request) {
 	bodyDataByte, _ := ioutil.ReadAll(r.Body)
+	fmt.Printf("DEBUG HandlePagerDutyEvent called with body data\n\n%s\n", string(bodyDataByte))
 	event := json.Get(bodyDataByte, "messages", 0, "event").ToString()
 	if event != "incident.acknowledge" { fmt.Printf("HandlePagerDutyEvent EVENT UNHANDLED\n") ; fmt.Fprintf(w, "EVENT UNHANDLED"); return }
 	alertKey := json.Get(bodyDataByte, "messages", 0, "incident", "alerts", 0, "alert_key").ToString()
