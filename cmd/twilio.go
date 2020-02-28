@@ -73,34 +73,41 @@ func ProcessTwilioGatherEvent(w http.ResponseWriter, r *http.Request) {
 		Host := json.Get([]byte(extraInfo), "Host").ToString()
 		Service := json.Get([]byte(extraInfo), "Service").ToString()
 
-		nagiosNsreBaseURL := GetConfig("nagios_nsre_url", "")
-		if nagiosNsreBaseURL == "" { log.Fatalln("ERROR FATAL This feature requires the appconfig key nagios_nsre_url. Please use sqlite3 command to insert a record into the log database. The value of the key is the base url of the nsre instance runs on the nagios server which has the endpoint /nagios/{command} to write nagios command to the command file") }
-		validToken, _ := GenerateJWT()
+		StatusCode := DoNagiosACK(Host, Service, user, "")
 
-		client := &http.Client{}
-		http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: Config.IgnoreCertificateCheck}
-
-		command := Ternary(Service == "", "host_ack", "service_ack").(string)
-
-		formData := url.Values{
-			"host": { Host },
-			"service": { Service },
-			"user": {user},
-		}
-		req, _ := http.NewRequest("POST", nagiosNsreBaseURL + "/nagios/" + command, strings.NewReader(formData.Encode()))
-		req.Header.Set("Token", validToken)
-		req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
-
-		res, err := client.Do(req)
-		if err != nil {
-			fmt.Printf("ERROR - %v", err)
-		}
-		defer res.Body.Close()
-		if res.StatusCode != 200 {
+		if StatusCode != 200 {
 			http.Error(w, "ERROR when talking to nagios cmd", 500); return
 		}
 		fmt.Fprintf(w, "OK"); return
 	}
+}
+
+func DoNagiosACK(Host, Service, User, Comment string) int {
+	nagiosNsreBaseURL := GetConfig("nagios_nsre_url", "")
+	if nagiosNsreBaseURL == "" { log.Fatalln("ERROR FATAL This feature requires the appconfig key nagios_nsre_url. Please use sqlite3 command to insert a record into the log database. The value of the key is the base url of the nsre instance runs on the nagios server which has the endpoint /nagios/{command} to write nagios command to the command file") }
+	validToken, _ := GenerateJWT()
+
+	client := &http.Client{}
+	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: Config.IgnoreCertificateCheck}
+
+	command := Ternary(Service == "", "host_ack", "service_ack").(string)
+
+	formData := url.Values{
+		"host": { Host },
+		"service": { Service },
+		"user": {User},
+		"comment": {Comment},
+	}
+	req, _ := http.NewRequest("POST", nagiosNsreBaseURL + "/nagios/" + command, strings.NewReader(formData.Encode()))
+	req.Header.Set("Token", validToken)
+	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+
+	res, err := client.Do(req)
+	if err != nil {
+		fmt.Printf("ERROR - %v", err)
+	}
+	defer res.Body.Close()
+	return res.StatusCode
 }
 
 func ProcessTwilioCallEvent(w http.ResponseWriter, r *http.Request) {

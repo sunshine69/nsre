@@ -328,4 +328,55 @@ awslogs: []
 
 See comment in `cmd/twilio.go` for more information.
 
+### External program to ship log
+
+If you do nto sue nsre in client mode to tail and ship log, but want to send log directly from your app then read on.
+
+#### Authentication
+Need to make a http-header 'Token' to contains the JWT Token. The signature needs to be verified to be the same shared key configured in the server.
+
+### Data
+Body of request should be a json data matching the json schema below.
+
+```
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "$ref": "#/definitions/LogData",
+  "definitions": {
+    "LogData": {
+      "required": [
+        "Timestamp",
+        "Datelog",
+        "Host",
+        "Application",
+        "Logfile",
+        "Message"
+      ],
+      "properties": {
+        "Timestamp": {
+          "type": "integer"
+        },
+        "Datelog": {
+          "type": "integer"
+        },
+        "Host": {
+          "type": "string"
+        },
+        "Application": {
+          "type": "string"
+        },
+        "Logfile": {
+          "type": "string"
+        },
+        "Message": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    }
+  }
+}
+```
+
 END OF DOCUMENT

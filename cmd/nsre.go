@@ -1,7 +1,7 @@
 package cmd
 
 import (
-	// "net/http/httputil"
+	"net/http/httputil"
 	"mime/multipart"
 	"crypto/subtle"
 	"bufio"
@@ -498,28 +498,21 @@ func DoUploadLog(w http.ResponseWriter, r *http.Request) {
 }
 
 // For debugging purposes only
-// func DumpPost(w http.ResponseWriter, r *http.Request) {
-// 	requestDump, err := httputil.DumpRequest(r, true)
-// 	if err != nil {
-// 		fmt.Println(err)
-// 	}
-// 	fmt.Printf("DEBUG Dump post request\n")
-// 	fmt.Printf("DEBUG - dump %s\n",requestDump)
+func DumpPost(w http.ResponseWriter, r *http.Request) {
+	requestDump, err := httputil.DumpRequest(r, true)
+	if err != nil {
+		fmt.Println(err)
+	}
+	fmt.Printf("DEBUG - DUMP\n\n%s\n",requestDump)
 
-// 	msg, _ := ioutil.ReadAll(r.Body)
-// 	fmt.Printf("DEBUG - Body %s\n",msg)
+	msg, _ := ioutil.ReadAll(r.Body)
+	fmt.Printf("DEBUG - Body\n\n%s\n",msg)
 
-// 	r.Body = ioutil.NopCloser(bytes.NewBuffer(msg))
-// 	e := r.ParseForm()
-// 	if e != nil { fmt.Printf("DEBUG ERROR %v\n", e) }
+	r.Body = ioutil.NopCloser(bytes.NewBuffer(msg))
+	fmt.Fprintf(w, "OK")
+	return
 
-// 	From := r.FormValue("From")
-// 	fmt.Printf("DEBUG From %s\n", From)
-
-// 	fmt.Fprintf(w, "OK")
-// 	return
-
-// }
+}
 
 //HandleRequests -
 func HandleRequests() {
@@ -552,10 +545,15 @@ func HandleRequests() {
 		twilioSid := GetConfig("twilio_sid")
 		twilioSec := GetConfig("twilio_sec")
 		router.Handle("/twilio/{action:(?:call|sms)}", IsBasicAuth(MakeTwilioCall, twilioSid, twilioSec, "Twilio")).Methods("POST")
-		// router.HandleFunc("/dumppost", DumpPost).Methods("POST")
+
+		//Debugging
+
+		router.Handle("/dump", IsBasicAuth(DumpPost, GetConfig("dump_username", ""), GetConfig("dump_password", ""), "DumpRequest")).Methods("POST", "GET", "PUT")
 
 		//Nagios commands
 		router.Handle("/nagios/{command}", isAuthorized(ProcessNagiosCommand)).Methods("POST")
+		//Pagerduty event - See the file pagerduty.go for more
+		router.Handle("/pagerduty", IsBasicAuth(HandlePagerDutyEvent, GetConfig("pagerduty_username"), GetConfig("pagerduty_password"), "PagerDuty" )).Methods("POST")
 	}
 
 	srv := &http.Server{
