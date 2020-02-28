@@ -44,7 +44,9 @@ func HandleNagiosServiceACK(w *http.ResponseWriter, r *http.Request) {
 	host := r.FormValue("host")
 	serviceDecs := r.FormValue("service")
 	user := r.FormValue("user")
-	data := fmt.Sprintf("[%d] ACKNOWLEDGE_SVC_PROBLEM;%s;%s;2;1;1;%s;Acknowledgement From Twilio\n", time.Now().Unix(), host, serviceDecs, user)
+	comment := r.FormValue("comment")
+	comment = Ternary(comment == "", "Acknowledgement From Twilio", comment).(string)
+	data := fmt.Sprintf("[%d] ACKNOWLEDGE_SVC_PROBLEM;%s;%s;2;1;1;%s;%s\n", time.Now().Unix(), host, serviceDecs, user, comment)
 	fmt.Printf("DEBUG data going to send to nagios '%s'\n", data)
     if err := ioutil.WriteFile(nagiosCmdFile, []byte(data), 0644); err != nil {
 		fmt.Printf("ERROR writting to nagios cmd file - %v\n", err)

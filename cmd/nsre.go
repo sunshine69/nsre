@@ -499,6 +499,9 @@ func DoUploadLog(w http.ResponseWriter, r *http.Request) {
 
 // For debugging purposes only
 func DumpPost(w http.ResponseWriter, r *http.Request) {
+	key := GetConfig("debug_shared_key", "")
+	if key != mux.Vars(r)["debug_shared_key"] { http.Error(w, "ERROR", 403); return }
+
 	requestDump, err := httputil.DumpRequest(r, true)
 	if err != nil {
 		fmt.Println(err)
@@ -545,10 +548,14 @@ func HandleRequests() {
 		twilioSid := GetConfig("twilio_sid")
 		twilioSec := GetConfig("twilio_sec")
 		router.Handle("/twilio/{action:(?:call|sms)}", IsBasicAuth(MakeTwilioCall, twilioSid, twilioSec, "Twilio")).Methods("POST")
-		router.HandleFunc("/dump", DumpPost).Methods("POST")
+
+		//Debugging
+		router.HandleFunc("/dump/{debug_shared_key}", DumpPost).Methods("POST", "GET", "PUT")
 
 		//Nagios commands
 		router.Handle("/nagios/{command}", isAuthorized(ProcessNagiosCommand)).Methods("POST")
+		//Pagerduty event - See the file pagerduty.go for more
+		router.HandleFunc("/pagerduty/{pagerduty_shared_key}", HandlePagerDutyEvent).Methods("POST")
 	}
 
 	srv := &http.Server{
