@@ -267,6 +267,26 @@ nssm set nsre AppDirectory "C:\ansible_install\nsre"
 
 ### Sample complete config file
 
+To configure the time pattern to parse the log line first look at this struct comment to understand these values (copy from config.go)
+
+```
+type LogFile struct {
+    Name string //Must be unique within a host running this app. Used to save the tail pos
+    Paths []string
+    Timelayout string //Parse the match below into go time object
+    Timepattern string //extract the timestamp part into a timeStr which is fed into the Timelayout
+    Timeadjust string //If the time extracted string miss some info (like year or zone etc) this string will be appended to the string. It may have special string 'syslog' to auto adjust for syslog time stamp. If it contains a golang timelayout token with one extra space at the end of the string (eg. '2004 ') then these token will be parsed as the current for example year.
+    Timestrreplace []string //Do search/replace the capture before parse time. As go does not support , aas sec fraction this is to work around for this case.
+    Pattern string //will be matched to extract the HOSTNAME APP-NAME MSG part of the line.
+    Multilineptn string //detect if the line is part of the previous line
+    Excludepatterns []string //If log line match this pattern it will be excluded
+    Includepatterns []string
+    Appname string //Overrite the appname of the logfile if not empty
+}
+```
+
+The `logfiles` in the complete nsre.yaml config file below is followed the above struct.
+
 ```
 # Server listen port
 port: 8000
@@ -283,7 +303,6 @@ commands:
 
 jwtkey: <YOUR JWT KEY>
 
-
 logfiles:
 - name: errcd-iis-activity-tas
   paths:
@@ -297,7 +316,6 @@ logfiles:
   pattern: ([^\s]+.*)$
   multilineptn: ([^\s]*.*)$
   appname: "errcd-activity"
-
 
 # This is for client mode
 serverurl: <Your server url>
