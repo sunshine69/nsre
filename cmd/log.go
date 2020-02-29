@@ -201,6 +201,22 @@ func SendLine(timeHarvest, timeParsed time.Time, hostStr, appNameStr, logFile, m
 	return IsOK
 }
 
+//ParseTimeAdjust - take a timeadjust and parse its meaning. Use the go time formatting eg. if it hits '2006' then it will replace it with current year. Similar.
+// If string is not any of the go date layout then it is pass though as is.
+// There are 5 tokens: Jan 02 15:04:05 2006 MST that we support
+func ParseTimeAdjust(adjustStr string) string {
+	timeLayoutToken := []string{"Jan ", "02 ", "15:04:05 ", "2006 ", "MST "}
+	now := time.Now()
+	out := adjustStr
+	for _, tk := range(timeLayoutToken) {
+		if strings.Contains(adjustStr, tk) {
+			tkTrim := strings.TrimSpace(tk)
+			out = strings.ReplaceAll(out, tkTrim, now.Format(tkTrim))
+		}
+	}
+	return strings.TrimSpace(out)
+}
+
 //ProcessTailLines -
 func ProcessTailLines(cfg *TailLogConfig, tail *tail.Tail) {
 	tailLines := tail.Lines
@@ -240,10 +256,6 @@ func ProcessTailLines(cfg *TailLogConfig, tail *tail.Tail) {
 
 	lineStack := []string{}
 	beginLineMatch := false
-
-	if cfg.Timeadjust == "syslog" {//Assume at least you restart this server once a year :P
-		cfg.Timeadjust = CurrentYear + " " + CurrentZone
-	}
 
 	for line := range tailLines {
 		if line.Text == "" || line.Text == "\n" { continue }
@@ -289,7 +301,8 @@ func ProcessTailLines(cfg *TailLogConfig, tail *tail.Tail) {
 				}
 			}
 			if match[0] != "notimeptn" {
-				timeStr := strings.Join([]string{match[1], cfg.Timeadjust}, " ")
+				timeadjust := ParseTimeAdjust(cfg.Timeadjust)
+				timeStr := strings.Join([]string{match[1], timeadjust}, " ")
 				timeStr = strings.Replace(timeStr, "  ", " 0", -1)
 				if len(cfg.Timestrreplace) == 2 {
 					timeStr = strings.Replace(timeStr, cfg.Timestrreplace[0], cfg.Timestrreplace[1], -1)

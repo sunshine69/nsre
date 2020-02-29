@@ -2,6 +2,7 @@ package cmd
 
 import(
 	"testing"
+	"fmt"
 )
 
 func TestTail(t *testing.T) {
@@ -15,4 +16,9 @@ func TestTail(t *testing.T) {
 	// 	Timeadjust: "2019 AEST",
 	// 	Pattern: `([^\s]+) ([^\s]+) (.*)$`,
 	// }
+}
+
+func TestParseTimeAdjust(t *testing.T) {
+	data := ParseTimeAdjust("2006 Jan 15:04:05 02 MST ")
+	fmt.Printf("data: '%s'\n", data)
 }
