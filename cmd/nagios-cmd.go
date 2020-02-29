@@ -36,6 +36,8 @@ func ProcessNagiosCommand(w http.ResponseWriter, r *http.Request) {
 		HandleNagiosServiceACK(&w, r)
 	case "host_ack":
 		HandleNagiosHostACK(&w, r)
+	case "del_all_comment":
+		HandleNagiosDeleteAllComment(&w, r)
 	}
 }
 
@@ -57,10 +59,26 @@ func HandleNagiosServiceACK(w *http.ResponseWriter, r *http.Request) {
 
 func HandleNagiosHostACK(w *http.ResponseWriter, r *http.Request) {
 	nagiosCmdFile := GetConfigSave("nagios_cmd_file", "/var/spool/nagios/cmd/nagios.cmd")
-	r.ParseForm()
 	host := r.FormValue("host")
 	user := r.FormValue("user")
 	data := fmt.Sprintf("[%d] ACKNOWLEDGE_HOST_PROBLEM;%s;2;1;1;%s;Acknowledgement From Twilio\n", time.Now().Unix(), host, user)
+    if err := ioutil.WriteFile(nagiosCmdFile, []byte(data), 0644); err != nil {
+		fmt.Printf("ERROR writting to nagios cmd file - %v\n", err)
+		http.Error(*w, "ERROR", 500); return
+	}
+	fmt.Fprintf(*w, "OK"); return
+}
+
+func HandleNagiosDeleteAllComment(w *http.ResponseWriter, r *http.Request) {
+	nagiosCmdFile := GetConfigSave("nagios_cmd_file", "/var/spool/nagios/cmd/nagios.cmd")
+	host := r.FormValue("host")
+	serviceDecs := r.FormValue("service")
+	var data string
+	if serviceDecs == "" {
+		data = fmt.Sprintf("[%d] DEL_ALL_HOST_COMMENTS;%s\n", time.Now().Unix(), host)
+	} else {
+		data = fmt.Sprintf("[%d] DEL_ALL_SVC_COMMENTS;%s;%s\n", time.Now().Unix(), host, serviceDecs)
+	}
     if err := ioutil.WriteFile(nagiosCmdFile, []byte(data), 0644); err != nil {
 		fmt.Printf("ERROR writting to nagios cmd file - %v\n", err)
 		http.Error(*w, "ERROR", 500); return
