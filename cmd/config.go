@@ -136,7 +136,8 @@ func GenerateDefaultConfig(opt ...interface{}) (e error) {
         PasswordFilterPatterns: []string {`([Pp]assword|[Pp]assphrase)['"]*[\:\=]*[\s\n]*[^\s]+[\s;]`},
     }
 
-    var fPath, serverurl, jwtkey, logfile, appname, sslcert, sslkey string
+    var fPath, serverurl, jwtkey, logfile, appname, sslcert, sslkey, serverdomain, logdbpath string
+    var port int
 
     for i, v := range(opt) {
         if i % 2 == 0 {
@@ -156,12 +157,18 @@ func GenerateDefaultConfig(opt ...interface{}) (e error) {
                 sslcert = opt[i+1].(string)
             case "sslkey":
                 sslkey = opt[i+1].(string)
+            case "port":
+                port = opt[i+1].(int)
+            case "serverdomain":
+                serverdomain = opt[i+1].(string)
+            case "logdbpath":
+                logdbpath = opt[i+1].(string)
             }
         }
     }
 
     var data []byte
-    if logfile != "" {
+    if logfile != "" || serverurl != "" || jwtkey != "" || logdbpath != "" {
         var logfiles []string
         _logfiles := strings.Split(logfile, ",")
         for _, _f := range(_logfiles) {
@@ -189,6 +196,10 @@ func GenerateDefaultConfig(opt ...interface{}) (e error) {
         defaultConfig.JwtKey = jwtkey
         defaultConfig.IgnoreCertificateCheck = true
 
+        if serverdomain != "" { defaultConfig.Serverdomain = serverdomain }
+        defaultConfig.Port = port
+        defaultConfig.Logdbpath = logdbpath
+
         data, e = yaml.Marshal(defaultConfig)
         if e != nil { log.Fatalf("ERROR can not dump default config yaml")}
 
@@ -199,6 +210,7 @@ func GenerateDefaultConfig(opt ...interface{}) (e error) {
     }
     err := ioutil.WriteFile(fPath, data, 0600)
     if err != nil {return err}
+    fmt.Printf("\n\nIf you setup a server you still need to edit the config to at least supply the value of appgoogleclientid, appgoogleclientsecret, sessionkey, authorizeddomain\n\n")
     return LoadConfig(fPath)
 }
 

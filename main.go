@@ -63,7 +63,10 @@ func main() {
 	tailFollow := flag.Bool("tailf", false, "Tail mode follow")
 
 	tailFile := flag.String("f", "", "Files (coma sep list if more than 1) to parse in tailSimple mode.\nIt will take a file and parse by lines. There is no time parser. Need another option -appname to insert the application name, and -f <file to parse>; -url <log store url>.\nThis will ignore all config together.")
-	serverURL := flag.String("url", "", "Server uri to post log to in tailSimple mode")
+	serverURL := flag.String("serverurl", "", "Server uri to post log to in tailSimple mode")
+	logdbpath := flag.String("db", "", "Path to the application database file. Default: logs.db")
+	port := flag.Int("port", 8000, "Server Port to listen on. Default is 8000")
+	serverdomain := flag.String("domain", "", "Server domain. Leave it empty it will listen on default ip")
 	appName := flag.String("appname", "", "Application name in tailSimple mode")
 	jwtkey := flag.String("jwtkey", "", "JWT API Key to talk to server")
 	sslcert := flag.String("sslcert", "", "SSL certificate path")
@@ -91,6 +94,9 @@ func main() {
 			"appname", *appName,
 			"sslcert", *sslcert,
 			"sslkey", *sslkey,
+			"port", *port,
+			"serverdomain", *serverdomain,
+			"logdbpath", *logdbpath,
 		)
 	}
 
