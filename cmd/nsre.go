@@ -315,7 +315,7 @@ func ProcessSearchLog(w http.ResponseWriter, r *http.Request) {
 
 //DoSQLSearch - Execute the search in the database. Return the record counts and fill the string builder object.
 func DoSQLSearch(q string, o *strings.Builder) (int) {
-	log.Println(q)
+	log.Printf("DEBUG - Query '%s'\n", q)
 
 	conn := GetDBConn()
 	defer conn.Close()
@@ -377,28 +377,34 @@ func DoSQLSearch(q string, o *strings.Builder) (int) {
 //SearchLog -
 func SearchLog(keyword string, o *strings.Builder, sortorder, duration, tz string) (int) {
 	keyword = strings.TrimSpace(keyword)
-	splitPtn := regexp.MustCompile(`[\s]+[\&\+][\s]+`)
-	// tokens := strings.Split(keyword, " & ")
-	tokens := splitPtn.Split(keyword, -1)
-	_l := len(tokens)
-
 	start, end := ParseTimeRange(duration, tz)
+	var q string
+	if strings.HasPrefix(keyword, "select") || strings.HasPrefix(keyword, "SELECT") {
+		timerange := fmt.Sprintf(" WHERE ((timestamp > %d) AND (timestamp < %d)) AND ", start.UnixNano(), end.UnixNano())
+		q = strings.Replace(keyword, " WHERE ", timerange, 1) + " ORDER BY timestamp " + sortorder + ";"
+		q = strings.Replace(keyword, " where ", timerange, 1) + " ORDER BY timestamp " + sortorder + ";"
+	} else {
+		splitPtn := regexp.MustCompile(`[\s]+[\&\+][\s]+`)
+		// tokens := strings.Split(keyword, " & ")
+		tokens := splitPtn.Split(keyword, -1)
+		_l := len(tokens)
 
-	q := fmt.Sprintf("SELECT id, timestamp, datelog, host, application, logfile, message from log WHERE ((timestamp > %d) AND (timestamp < %d)) AND ", start.UnixNano(), end.UnixNano())
+		q = fmt.Sprintf("SELECT id, timestamp, datelog, host, application, logfile, message from log WHERE ((timestamp > %d) AND (timestamp < %d)) AND ", start.UnixNano(), end.UnixNano())
 
-	for i, t := range(tokens) {
-		negate := ""
-		combind := "OR"
-		if strings.HasPrefix(t, "!") || strings.HasPrefix(t, "-") {
-			negate = " NOT "
-			t = strings.Replace(t, "!", "", 1)
-			t = strings.Replace(t, "-", "", 1)
-			combind = "AND"
-		}
-		if i == _l - 1 {
-			q = fmt.Sprintf("%s (host %s LIKE '%%%s%%' %s application %s LIKE '%%%s%%' %s logfile %s LIKE '%%%s%%' %s message %s LIKE '%%%s%%') ORDER BY timestamp %s;", q, negate, t, combind, negate, t, combind, negate, t, combind, negate, t, sortorder)
-		} else {
-			q = fmt.Sprintf("%s (host %s LIKE '%%%s%%' %s application %s LIKE '%%%s%%' %s logfile %s LIKE '%%%s%%' %s message %s LIKE '%%%s%%') AND ", q, negate,t, combind, negate, t, combind, negate, t, combind, negate,t)
+		for i, t := range(tokens) {
+			negate := ""
+			combind := "OR"
+			if strings.HasPrefix(t, "!") || strings.HasPrefix(t, "-") {
+				negate = " NOT "
+				t = strings.Replace(t, "!", "", 1)
+				t = strings.Replace(t, "-", "", 1)
+				combind = "AND"
+			}
+			if i == _l - 1 {
+				q = fmt.Sprintf("%s (host %s LIKE '%%%s%%' %s application %s LIKE '%%%s%%' %s logfile %s LIKE '%%%s%%' %s message %s LIKE '%%%s%%') ORDER BY timestamp %s;", q, negate, t, combind, negate, t, combind, negate, t, combind, negate, t, sortorder)
+			} else {
+				q = fmt.Sprintf("%s (host %s LIKE '%%%s%%' %s application %s LIKE '%%%s%%' %s logfile %s LIKE '%%%s%%' %s message %s LIKE '%%%s%%') AND ", q, negate,t, combind, negate, t, combind, negate, t, combind, negate,t)
+			}
 		}
 	}
 	return DoSQLSearch(q, o)
