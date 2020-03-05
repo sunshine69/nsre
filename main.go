@@ -63,7 +63,11 @@ func main() {
 	tailFollow := flag.Bool("tailf", false, "Tail mode follow")
 
 	tailFile := flag.String("f", "", "Files (coma sep list if more than 1) to parse in tailSimple mode.\nIt will take a file and parse by lines. There is no time parser. Need another option -appname to insert the application name, and -f <file to parse>; -url <log store url>.\nThis will ignore all config together.")
-	serverURL := flag.String("serverurl", "", "Server uri to post log to in tailSimple mode")
+
+	var serverURL string
+	flag.StringVar(&serverURL, "serverurl", "", "Remote nsre url to send request to. Used by shipping log or nagios command, etc..")
+	flag.StringVar(&serverURL, "url", "", "Remote nsre url to send request to. Used by shipping log or nagios command, etc..")
+
 	logdbpath := flag.String("db", "", "Path to the application database file. Default: logs.db")
 	port := flag.Int("port", 8000, "Server Port to listen on. Default is 8000")
 	serverdomain := flag.String("domain", "", "Server domain. Leave it empty it will listen on default ip")
@@ -88,7 +92,7 @@ func main() {
 	var generateDefaultConfig = func() (error) {
 		return cmd.GenerateDefaultConfig(
 			"file", *configFile,
-			"serverurl", *serverURL,
+			"serverurl", serverURL,
 			"jwtkey", *jwtkey,
 			"logfile", *tailFile,
 			"appname", *appName,
