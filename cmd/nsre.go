@@ -445,6 +445,9 @@ func DoUploadLog(w http.ResponseWriter, r *http.Request) {
 		message := r.FormValue("message")
 		conn := GetDBConn()
 		defer conn.Close()
+
+		var newIDList []int64
+
 		if message != ""{
 			message = FilterPassword(message, PasswordFilterPtns)
 			message = DecodeJenkinsConsoleNote(message)
@@ -453,6 +456,7 @@ func DoUploadLog(w http.ResponseWriter, r *http.Request) {
 				log.Printf("ERROR - can not insert data for logline - %v\n", err)
 				http.Error(w, "ERROR", 500); return
 			}
+			newIDList = append(newIDList, conn.LastInsertRowID())
 		}
 		file, handler, err := r.FormFile("logfile")
 		if err != nil {
@@ -489,10 +493,20 @@ func DoUploadLog(w http.ResponseWriter, r *http.Request) {
 						log.Printf("ERROR -logline can not insert data for logline - %v\n", err)
 						http.Error(w, "ERROR", 500)
 					}
+					if len(newIDList) < 50{
+						newIDList = append(newIDList, conn.LastInsertRowID())
+					}
 				}
 			}
 		}
-		fmt.Fprintf(w, "OK Log saved.")
+		msg := "<html><body>OK Log saved.<br><ul>"
+		for _, id := range(newIDList) {
+			url := fmt.Sprintf("https://%s:%d/searchlogbyid/%d", Config.Serverdomain, Config.Port, id)
+			l := fmt.Sprintf(`<li><a href="%s">%s</a></li>`, url, url )
+			msg = msg + l
+		}
+		msg = msg + "</ul></body</html>"
+		fmt.Fprintf(w, msg)
 		return
 	}
 }
