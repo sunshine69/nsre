@@ -236,6 +236,8 @@ func ProcessSearchLog(w http.ResponseWriter, r *http.Request) {
 
 	tString := LoadTemplate("templates/searchpage.go.html")
 	var output strings.Builder
+	inputrows := GetRequestValue(r, "inputrows", "1")
+	fmt.Printf("DEBUG rows %s\n", inputrows)
 
 	switch r.Method {
 	case "GET":
@@ -263,13 +265,13 @@ func ProcessSearchLog(w http.ResponseWriter, r *http.Request) {
 			"keyword": "",
 			"duration": duration.(string),
 			"tz": tz.(string),
+			"inputrows": inputrows,
 			}); e != nil {
 			fmt.Printf("%v\n", e)
 		}
 
 	case "POST":
 		keyword := r.FormValue("keyword")
-		inputrows := GetRequestValue(r, "inputrows", "1")
 		sortorder := r.Form["sortorder"]
 		var sortorderVal, checkedSort string
 		if len(sortorder) == 0 {
