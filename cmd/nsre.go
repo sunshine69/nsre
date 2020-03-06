@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"errors"
 	"net/http/httputil"
 	"mime/multipart"
 	"crypto/subtle"
@@ -193,10 +194,14 @@ func ProcessSearchLogByID(w http.ResponseWriter, r *http.Request) {
 	start := rowTime.Add(-1 * halfDuration)
 	end := rowTime.Add(halfDuration)
 	log.Printf("Time range: %s - %s\n",start.Format(AUTimeLayout), end.Format(AUTimeLayout)  )
-	q = fmt.Sprintf("SELECT id, timestamp, datelog, host, application, logfile, message from log WHERE ((timestamp > %d) AND (timestamp < %d)) AND host = '%s' AND application = '%s' ORDER BY timestamp ASC", start.UnixNano(), end.UnixNano(), host, application)
+	q = fmt.Sprintf("SELECT id, timestamp, datelog, host, application, message, logfile FROM log WHERE ((timestamp > %d) AND (timestamp < %d)) AND host = '%s' AND application = '%s' ORDER BY timestamp ASC", start.UnixNano(), end.UnixNano(), host, application)
 
 	var output strings.Builder
-	c := DoSQLSearch(q, &output)
+	c, e := DoSQLSearch(q, &output)
+	if e != nil {
+		fmt.Fprintf(w, e.Error())
+		return
+	}
 
 	tString := LoadTemplate("templates/searchpage.go.html")
 
@@ -300,7 +305,11 @@ func ProcessSearchLog(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		c := SearchLog(keyword, &output, sortorderVal, duration, tz)
+		c, e := SearchLog(keyword, &output, sortorderVal, duration, tz)
+		if e != nil {
+			fmt.Fprint(w, e.Error())
+			return
+		}
 		t := template.Must(template.New("webgui").Parse(tString))
 
 		if e := t.Execute(w, map[string]string{
@@ -318,7 +327,7 @@ func ProcessSearchLog(w http.ResponseWriter, r *http.Request) {
 }
 
 //DoSQLSearch - Execute the search in the database. Return the record counts and fill the string builder object.
-func DoSQLSearch(q string, o *strings.Builder) (int) {
+func DoSQLSearch(q string, o *strings.Builder) (int, error) {
 	log.Printf("DEBUG - Query '%s'\n", q)
 
 	conn := GetDBConn()
@@ -326,7 +335,9 @@ func DoSQLSearch(q string, o *strings.Builder) (int) {
 
 	stmt, err := conn.Prepare(q)
 	if err != nil {
-		log.Printf("ERROR - %v\n", err)
+		msg := fmt.Sprintf("ERROR - %v", err)
+		log.Printf(msg)
+		return 0, errors.New(msg)
 	}
 	defer stmt.Close()
 	fmt.Fprintf(o, `
@@ -375,18 +386,23 @@ func DoSQLSearch(q string, o *strings.Builder) (int) {
 		count = count + 1
 	}
 	fmt.Fprintf(o, "</table>")
-	return count
+	return count, nil
 }
 
 //SearchLog -
-func SearchLog(keyword string, o *strings.Builder, sortorder, duration, tz string) (int) {
+func SearchLog(keyword string, o *strings.Builder, sortorder, duration, tz string) (int, error) {
 	keyword = strings.TrimSpace(keyword)
 	start, end := ParseTimeRange(duration, tz)
 	var q string
 	if strings.HasPrefix(keyword, "select") || strings.HasPrefix(keyword, "SELECT") {
 		timerange := fmt.Sprintf(" WHERE ((timestamp > %d) AND (timestamp < %d)) AND ", start.UnixNano(), end.UnixNano())
-		q = strings.Replace(keyword, " WHERE ", timerange, 1) + " ORDER BY timestamp " + sortorder + ";"
-		q = strings.Replace(keyword, " where ", timerange, 1) + " ORDER BY timestamp " + sortorder + ";"
+		if strings.Contains(keyword, " where ") || strings.Contains(keyword, " WHERE ") {
+			q = strings.Replace(keyword, " WHERE ", timerange, 1) + " ORDER BY timestamp " + sortorder + ";"
+			q = strings.Replace(keyword, " where ", timerange, 1) + " ORDER BY timestamp " + sortorder + ";"
+		} else {
+			timerange = strings.TrimSuffix(timerange, " AND ")
+			q = strings.Replace(keyword, " log", " log " + timerange, 1) + " ORDER BY timestamp " + sortorder + ";"
+		}
 	} else {
 		splitPtn := regexp.MustCompile(`[\s]+[\&\+][\s]+`)
 		// tokens := strings.Split(keyword, " & ")
