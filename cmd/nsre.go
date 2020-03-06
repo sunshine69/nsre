@@ -268,8 +268,8 @@ func ProcessSearchLog(w http.ResponseWriter, r *http.Request) {
 		}
 
 	case "POST":
-		r.ParseForm()
 		keyword := r.FormValue("keyword")
+		inputrows := GetRequestValue(r, "inputrows", "1")
 		sortorder := r.Form["sortorder"]
 		var sortorderVal, checkedSort string
 		if len(sortorder) == 0 {
@@ -307,6 +307,7 @@ func ProcessSearchLog(w http.ResponseWriter, r *http.Request) {
 			"keyword": keyword,
 			"duration": duration,
 			"tz": tz,
+			"inputrows": inputrows,
 			}); e != nil {
 			fmt.Printf("%v\n", e)
 		}

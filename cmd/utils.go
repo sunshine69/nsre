@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"github.com/gorilla/mux"
 	"net/http"
 	"io/ioutil"
 	"bytes"
@@ -166,4 +167,65 @@ func Ternary(cond bool, first, second interface{}) interface{} {
 	} else {
 		return second
 	}
+}
+
+//GetRequestValue - Attempt to get a val by key from the request in all cases.
+//First from the mux variables in the route path such as /dosomething/{var1}/{var2}
+//Then check the query string values such as /dosomething?var1=x&var2=y
+//Then check the form values if any
+//Then check the default value if supplied to use as return value
+//For performance we split each type into each function so it can be called independantly
+func GetRequestValue(r *http.Request, key ...string) string {
+	o := GetMuxValue(r, key[0], "")
+	if o == "" {
+		o = GetQueryValue(r, key[0], "")
+	}
+	if o == "" {
+		o = GetFormValue(r, key[0], "")
+	}
+	if o == "" {
+		if len(key) > 1 {
+			o = key[1]
+		} else {
+			o = ""
+		}
+	}
+	return o
+}
+
+//GetMuxValue -
+func GetMuxValue(r *http.Request, key ...string) string {
+	vars := mux.Vars(r)
+	val, ok := vars[key[0]]
+	if !ok {
+		if len(key) > 1 {
+			return key[1]
+		}
+		return ""
+	}
+	return val
+}
+
+//GetFormValue -
+func GetFormValue(r *http.Request, key ...string) string {
+	val := r.FormValue(key[0])
+	if val == "" {
+		if len(key) > 1 {
+			return key[1]
+		}
+	}
+	return val
+}
+
+//GetQueryValue -
+func GetQueryValue(r *http.Request, key ...string) string {
+	vars := r.URL.Query()
+	val, ok := vars[key[0]]
+	if !ok {
+		if len(key) > 1 {
+			return key[1]
+		}
+		return ""
+	}
+	return val[0]
 }

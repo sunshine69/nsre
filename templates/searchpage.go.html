@@ -3,12 +3,27 @@
 <head>
 	<title>webgui</title>
 	<script>
+		function calculateRows(textarea) {
+			var lineheight = parseInt(textarea.style.lineHeight) || 12; //line-height: 12px;
+			var scrollheight = textarea.scrollHeight;
+			// console.clear();
+			// console.log(Math.floor(scrollheight / lineheight));
+			return Math.floor(scrollheight / lineheight)
+		}
+
+		function beforeSubmit(form_id) {
+			textInput = document.getElementById('keyword');
+			inputRows = document.getElementsByName('inputrows')[0];
+			inputRows.value = calculateRows(textInput);
+			document.getElementById(form_id).submit();
+			return false;
+		}
 		function doClear() {
-			document.getElementById('keyword').value = ''
+			document.getElementById('keyword').value = '';
 		}
 		function doClearTime() {
-			document.getElementById('tz').value = 'AEST'
-			document.getElementById('duration').value = '15m'
+			document.getElementById('tz').value = 'AEST';
+			document.getElementById('duration').value = '15m';
 		}
 	</script>
 	<style>
@@ -41,11 +56,14 @@
 </head>
 <body>
     <h1>Search Log</h1>
-    <form action="/searchlog" method="POST">
+    <form action="/searchlog" method="POST" id="searchlog" onsubmit="try { beforeSubmit('searchlog'); } catch (e) { window.alert (e); }" >
         <table>
             <tr>
                 <td><label for="keyword">Keyword: </label></td>
-				<td><input name="keyword" id="keyword" type="text" value="{{ .keyword }}" title="keyword to search, Use & or + to combine filter and - or ! to negate. Example 'errcd & error + !ehealth + -build' will search contains errcd and error exclude ehealth exclude build. Start with 'SELECT' or 'select' to execute raw select sql with same time range. Example search by json data 'select * from log, json_each(message) WHERE json_valid(message) = 1 AND json_extract(json_each.value, '$.somefieldname_or_path') like '%sometext%''"./></td>
+				<td title="keyword to search, Use & or + to combine filter and - or ! to negate. Example 'errcd & error + !ehealth + -build' will search contains errcd and error exclude ehealth exclude build. Start with 'SELECT' or 'select' to execute raw select sql with same time range. Example search by json data 'select * from log, json_each(message) WHERE json_valid(message) = 1 AND json_extract(json_each.value, '$.somefieldname_or_path') like '%sometext%''"><textarea rows = "{{ .inputrows }}" cols = "40" name = "keyword" id="keyword">{{ .keyword }}</textarea>
+				<input type="hidden" name="inputrows" value="1">
+				</td>
+
 				<td><input type="checkbox" name="sortorder" value="DESC" {{ .sortorder }}>Sort Descending</td>
 				<td><input name="duration" id="duration" type="text" value="{{ .duration }}" title="Time range, eg. 15m for 15 minutes ago. Or dd/mm/yyyy hh:mm:ss - dd/mm/yyyy hh:mm:ss"/></td>
 				<td><input name="tz" id="tz" type="text" value="{{ .tz }}" title="TimeZone"/></td>
@@ -56,7 +74,7 @@
             <tr>
 				<td colspan="2" align="center">
 					<input type="button" value="reset" onclick="doClear();">&nbsp
-					<input name="submit" type="submit" value="submit">
+					<input name="submitForm" type="submit" value="submit">
 				</td>
 				<td colspan="3" align="center">
 					<input type="button" value="reset" onclick="doClearTime();">&nbsp
