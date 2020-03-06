@@ -237,10 +237,8 @@ func ProcessSearchLog(w http.ResponseWriter, r *http.Request) {
 	tString := LoadTemplate("templates/searchpage.go.html")
 	var output strings.Builder
 	inputrows := GetRequestValue(r, "inputrows", "1")
-	fmt.Printf("DEBUG rows %s\n", inputrows)
 	inputrowsInt, _ := strconv.Atoi(inputrows)
 	inputrows = Ternary( inputrowsInt >= 8, "8", inputrows).(string)
-	fmt.Printf("DEBUG rows after %s\n", inputrows)
 
 	switch r.Method {
 	case "GET":
@@ -419,7 +417,7 @@ func SearchLog(keyword string, o *strings.Builder, sortorder, duration, tz strin
 func SendProcessCommand(w http.ResponseWriter, r *http.Request) {
 	userIPWithPort := ReadUserIP(r)
 	userIP := strings.Split(userIPWithPort, ":")[0]
-	fmt.Printf("DEBUG userID %s\n", userIP)
+
 	if userIP != "127.0.0.1" {
 		http.Error(w, "Permission denied", http.StatusForbidden)
 		return
