@@ -238,6 +238,9 @@ func ProcessSearchLog(w http.ResponseWriter, r *http.Request) {
 	var output strings.Builder
 	inputrows := GetRequestValue(r, "inputrows", "1")
 	fmt.Printf("DEBUG rows %s\n", inputrows)
+	inputrowsInt, _ := strconv.Atoi(inputrows)
+	inputrows = Ternary( inputrowsInt >= 8, "8", inputrows).(string)
+	fmt.Printf("DEBUG rows after %s\n", inputrows)
 
 	switch r.Method {
 	case "GET":
