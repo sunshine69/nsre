@@ -357,7 +357,7 @@ func DoSQLSearch(q string, o *strings.Builder) (int) {
 		var id int
 		var host, application, logfile, msg string
 
-		err = stmt.Scan(&id, &timestampVal, &datelogVal, &host, & application, &logfile, &msg)
+		err = stmt.Scan(&id, &timestampVal, &datelogVal, &host, &application, &msg, &logfile)
 		if err != nil {
 			log.Printf("ERROR - %v\n", err)
 		}
@@ -393,7 +393,7 @@ func SearchLog(keyword string, o *strings.Builder, sortorder, duration, tz strin
 		tokens := splitPtn.Split(keyword, -1)
 		_l := len(tokens)
 
-		q = fmt.Sprintf("SELECT id, timestamp, datelog, host, application, logfile, message from log WHERE ((timestamp > %d) AND (timestamp < %d)) AND ", start.UnixNano(), end.UnixNano())
+		q = fmt.Sprintf("SELECT id, timestamp, datelog, host, application, message, logfile FROM log WHERE ((timestamp > %d) AND (timestamp < %d)) AND ", start.UnixNano(), end.UnixNano())
 
 		for i, t := range(tokens) {
 			negate := ""
@@ -620,8 +620,8 @@ func SetUpLogDatabase() {
 		datelog int,
 		host text,
 		application text,
-		logfile text,
-		message text);
+		message text,
+		logfile text);
 
 	CREATE TABLE IF NOT EXISTS user(id integer primary key autoincrement, username text, email text UNIQUE);
 	CREATE UNIQUE INDEX IF NOT EXISTS t_host_idx ON log(timestamp, host, datelog, application);
