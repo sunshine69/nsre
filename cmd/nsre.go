@@ -1,6 +1,9 @@
 package cmd
 
 import (
+	"crypto/tls"
+	"golang.org/x/crypto/acme/autocert"
+	"golang.org/x/crypto/acme"
 	"errors"
 	"net/http/httputil"
 	"mime/multipart"
@@ -606,8 +609,31 @@ func HandleRequests() {
     }
 
 	if Config.Sslkey != "" {
-		log.Printf("Start SSL/TLS server on port %d\n", Config.Port)
-		log.Fatal(srv.ListenAndServeTLS(Config.Sslcert, Config.Sslkey))
+		if Config.LetsEncryptEnabled {
+			client := &acme.Client{DirectoryURL: autocert.DefaultACMEDirectory }
+			// client := &acme.Client{DirectoryURL: "https://acme-staging-v02.api.letsencrypt.org/directory" }
+			certManager := autocert.Manager{
+				Prompt: autocert.AcceptTOS,
+				Cache:  autocert.DirCache("certs"),
+				HostPolicy: autocert.HostWhitelist(Config.Serverdomain),
+				Client: client,
+			}
+			srv.TLSConfig = &tls.Config{
+				GetCertificate: certManager.GetCertificate,
+			}
+			// server := &http.Server{
+			// 	Addr:    ":8000",
+			// 	Handler: mux,
+			// 	TLSConfig: &tls.Config{
+			// 		GetCertificate: certManager.GetCertificate,
+			// 	},
+			// }
+			go http.ListenAndServe(":80", certManager.HTTPHandler(nil))
+			log.Fatal(srv.ListenAndServe())
+		} else {
+			log.Printf("Start SSL/TLS server on port %d\n", Config.Port)
+			log.Fatal(srv.ListenAndServeTLS(Config.Sslcert, Config.Sslkey))
+		}
 	} else {
 		log.Printf("Start server on port %d\n", Config.Port)
 		log.Fatal(srv.ListenAndServe())

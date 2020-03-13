@@ -75,6 +75,10 @@ func main() {
 	jwtkey := flag.String("jwtkey", "", "JWT API Key to talk to server")
 	sslcert := flag.String("sslcert", "", "SSL certificate path")
 	sslkey := flag.String("sslkey", "", "SSL key path")
+
+	letsencryptEnabled := flag.Bool("letsencrypt", false, "Enable Lets Encrypt Certificate Management")
+	letsencryptEmail := flag.String("letsencrypt-email", "someone@somedomain", "Lets encrypted email to be used")
+
 	poll := flag.Bool("poll", false, "Use polling file for tail. Usefull for windows.")
 	version := flag.Bool("version", false, "Get build version")
 
@@ -101,6 +105,8 @@ func main() {
 			"port", *port,
 			"serverdomain", *serverdomain,
 			"logdbpath", *logdbpath,
+			"letsencryptenabled", *letsencryptEnabled,
+			"letsencryptemail", *letsencryptEmail,
 		)
 	}
 
