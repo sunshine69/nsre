@@ -608,7 +608,7 @@ func HandleRequests() {
         Handler: router, // Pass our instance of gorilla/mux in.
     }
 
-	if Config.Sslkey != "" {
+	if Config.Sslkey == "" {
 		if Config.LetsEncryptEnabled {
 			client := &acme.Client{DirectoryURL: autocert.DefaultACMEDirectory }
 			// client := &acme.Client{DirectoryURL: "https://acme-staging-v02.api.letsencrypt.org/directory" }
@@ -629,16 +629,16 @@ func HandleRequests() {
 			// 	},
 			// }
 			go http.ListenAndServe(":80", certManager.HTTPHandler(nil))
+			log.Printf("Start SSL/TLS server with letsencrypt enabled on port %d\n", Config.Port)
+			log.Fatal(srv.ListenAndServeTLS("", ""))
+		} else{
+			log.Printf("Start server on port %d\n", Config.Port)
 			log.Fatal(srv.ListenAndServe())
-		} else {
-			log.Printf("Start SSL/TLS server on port %d\n", Config.Port)
-			log.Fatal(srv.ListenAndServeTLS(Config.Sslcert, Config.Sslkey))
 		}
 	} else {
-		log.Printf("Start server on port %d\n", Config.Port)
-		log.Fatal(srv.ListenAndServe())
+		log.Printf("Start SSL/TLS server on port %d\n", Config.Port)
+		log.Fatal(srv.ListenAndServeTLS(Config.Sslcert, Config.Sslkey))
 	}
-
 }
 //StartServer - We may spawn other listener within this func
 func StartServer() {
