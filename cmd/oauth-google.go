@@ -16,6 +16,7 @@ import (
 //OauthGoogleLogin -
 func OauthGoogleLogin(w http.ResponseWriter, r *http.Request) {
 	oauthState := generateStateOauthCookie(w)
+	//GoogleOauthConfig is setup on config.go and initialized
 	u := GoogleOauthConfig.AuthCodeURL(oauthState)
 	http.Redirect(w, r, u, http.StatusTemporaryRedirect)
 }

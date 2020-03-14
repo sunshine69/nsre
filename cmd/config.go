@@ -259,7 +259,7 @@ func LoadConfig(fPath string) (e error) {
         PasswordFilterPtns = append(PasswordFilterPtns, regexp.MustCompile(ptn))
     }
 
-    if Config.Sslkey == "" {
+    if Config.Sslkey == "" && ! Config.LetsEncryptEnabled {
         ServerProtocol = "http"
     } else {
         ServerProtocol = "https"
