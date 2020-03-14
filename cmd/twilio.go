@@ -131,12 +131,12 @@ func MakeTwilioCall(w http.ResponseWriter, r *http.Request) {
 	twilioSid := GetConfig("twilio_sid")
 	twilioSec := GetConfig("twilio_sec")
 	//Twilio will post to this url + /<my_call_sid>
-	twilioStatusCallBack := GetConfigSave("twilio_callback", fmt.Sprintf("https://%s/twilio/events/", Config.Serverdomain))
+	twilioStatusCallBack := GetConfigSave("twilio_callback", fmt.Sprintf("https://%s:%d/twilio/events/", Config.Serverdomain, Config.Port))
 
 	twilioCallUrl, Twiml := "", ""
 	myCallId := uuid.New().String()
 	formData := url.Values{}
-	gatherActionURL := GetConfigSave("gather_action_url", fmt.Sprintf("https://%s/twilio/gather/%s", Config.Serverdomain, myCallId))
+	gatherActionURL := GetConfigSave("gather_action_url", fmt.Sprintf("https://%s:%d/twilio/gather/%s", Config.Serverdomain, Config.Port, myCallId))
 
 	switch reqAction {
 	case "call":
