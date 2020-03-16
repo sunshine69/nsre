@@ -67,6 +67,7 @@ func ProcessTwilioGatherEvent(w http.ResponseWriter, r *http.Request) {
 		user := r.FormValue("To") //Use number to identify user
 		currentItem, extraInfo := GetTwilioCall(myCallId)
 		if currentItem == "" {//No previous call.
+			fmt.Printf("DEBUG ProcessTwilioGatherEvent myCallId '%s' return empty. extraInfo: '%s'\n", myCallId, extraInfo)
 			return
 		}
 		Host := json.Get([]byte(extraInfo), "Host").ToString()
@@ -74,6 +75,25 @@ func ProcessTwilioGatherEvent(w http.ResponseWriter, r *http.Request) {
 
 		fmt.Printf("DEBUG ProcessTwilioGatherEvent Processing for digit '%s'. Host: '%s' - Service: '%s'\n", Digit, Host, Service)
 		StatusCode := DoNagiosACK(Host, Service, user, "")
+
+		if StatusCode != 200 {
+			fmt.Printf("DEBUG ERROR status code is %d\n", StatusCode)
+			http.Error(w, "ERROR when talking to nagios cmd", 500); return
+		}
+		fmt.Fprintf(w, "OK"); return
+
+	case "5"://Delete Nagios comment. Used when nagios notify service recovery
+		myCallId := vars["call_id"]
+		currentItem, extraInfo := GetTwilioCall(myCallId)
+		if currentItem == "" {//No previous call.
+			fmt.Printf("DEBUG ProcessTwilioGatherEvent myCallId '%s' return empty. extraInfo: '%s'\n", myCallId, extraInfo)
+			return
+		}
+		Host := json.Get([]byte(extraInfo), "Host").ToString()
+		Service := json.Get([]byte(extraInfo), "Service").ToString()
+
+		fmt.Printf("DEBUG ProcessTwilioGatherEvent Processing for digit '%s'. Host: '%s' - Service: '%s'\n", Digit, Host, Service)
+		StatusCode := DoNagiosDeleteAllComment(Host, Service)
 
 		if StatusCode != 200 {
 			fmt.Printf("DEBUG ERROR status code is %d\n", StatusCode)
@@ -146,8 +166,8 @@ func MakeTwilioCall(w http.ResponseWriter, r *http.Request) {
 		Twiml = fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
 			<Response>
 				<Say voice="alice">%s</Say>
-				<Gather input="speech dtmf" timeout="5" numDigits="4" action="%s" method="POST">
-					<Say>Please press 4 to acknowledge</Say>
+				<Gather input="speech dtmf" timeout="5" numDigits="1" action="%s" method="POST">
+					<Say>Please press 4 to acknowledge. Press 5 to delete acknowledgement if this is a recovery notification</Say>
 				</Gather>
 			</Response>`, Body, gatherActionURL)
 
@@ -223,9 +243,9 @@ func MakeTwilioCall(w http.ResponseWriter, r *http.Request) {
 				case "completed":
 					action = "exit"
 					break
-				case "ringing", "queued", "in-progress", "":
+				case "ringing", "queued", "in-progress", "busy", "":
 					action = "wait"
-				case "busy", "failed", "no-answer":
+				case "failed", "no-answer":
 					action = "make_call"
 				}
 			} else if reqAction == "sms" {
