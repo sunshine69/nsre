@@ -80,7 +80,7 @@ func ProcessTwilioGatherEvent(w http.ResponseWriter, r *http.Request) {
 			fmt.Printf("DEBUG ERROR status code is %d\n", StatusCode)
 			http.Error(w, "ERROR when talking to nagios cmd", 500); return
 		}
-		fmt.Fprintf(w, "OK"); return
+		fmt.Fprintf(w, "OK. An acknowledgement was sent to nagios"); return
 
 	case "5"://Delete Nagios comment. Used when nagios notify service recovery
 		myCallId := vars["call_id"]
@@ -99,7 +99,9 @@ func ProcessTwilioGatherEvent(w http.ResponseWriter, r *http.Request) {
 			fmt.Printf("DEBUG ERROR status code is %d\n", StatusCode)
 			http.Error(w, "ERROR when talking to nagios cmd", 500); return
 		}
-		fmt.Fprintf(w, "OK"); return
+		fmt.Fprintf(w, "OK Delete nagios comment has been sent"); return
+	case "0":
+		fmt.Fprintf(w, "OK. No action."); return
 	}
 }
 
@@ -168,7 +170,7 @@ func MakeTwilioCall(w http.ResponseWriter, r *http.Request) {
 			<Response>
 				<Say voice="alice">%s</Say>
 				<Gather input="speech dtmf" timeout="5" numDigits="1" action="%s" method="POST">
-					<Say>Please press 4 to acknowledge. Press 5 to delete acknowledgement if this is a recovery notification</Say>
+					<Say>Press 4 to acknowledge. Press 5 to delete acknowledgement if this is a recovery notification. Press 0 if previous acknowledgement is sent.</Say>
 				</Gather>
 			</Response>`, Body, gatherActionURL)
 
