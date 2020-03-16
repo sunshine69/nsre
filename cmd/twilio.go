@@ -72,9 +72,11 @@ func ProcessTwilioGatherEvent(w http.ResponseWriter, r *http.Request) {
 		Host := json.Get([]byte(extraInfo), "Host").ToString()
 		Service := json.Get([]byte(extraInfo), "Service").ToString()
 
+		fmt.Printf("DEBUG ProcessTwilioGatherEvent Processing for digit '%s'. Host: '%s' - Service: '%s'\n", Digit, Host, Service)
 		StatusCode := DoNagiosACK(Host, Service, user, "")
 
 		if StatusCode != 200 {
+			fmt.Printf("DEBUG ERROR status code is %d\n", StatusCode)
 			http.Error(w, "ERROR when talking to nagios cmd", 500); return
 		}
 		fmt.Fprintf(w, "OK"); return
