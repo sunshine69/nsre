@@ -20,7 +20,9 @@ func DoNagiosDeleteAllComment(Host, Service string) int {
 	validToken, _ := GenerateJWT()
 
 	client := &http.Client{}
-	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: Config.IgnoreCertificateCheck}
+	if strings.HasPrefix(nagiosNsreBaseURL, "https://") {
+		http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: Config.IgnoreCertificateCheck}
+	}
 
 	command := "del_all_comment"
 
@@ -46,7 +48,9 @@ func DoNagiosACK(Host, Service, User, Comment string) int {
 	validToken, _ := GenerateJWT()
 
 	client := &http.Client{}
-	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: Config.IgnoreCertificateCheck}
+	if strings.HasPrefix(nagiosNsreBaseURL, "https://") {
+		http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: Config.IgnoreCertificateCheck}
+	}
 
 	command := Ternary(Service == "", "host_ack", "service_ack").(string)
 

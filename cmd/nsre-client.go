@@ -20,7 +20,7 @@ func RunCommand(cmdName ...string) (string) {
     }
 
     client := &http.Client{}
-	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: Config.IgnoreCertificateCheck}
+
 
     var serverURL string
     if len(cmdName) == 3 {
@@ -28,7 +28,11 @@ func RunCommand(cmdName ...string) (string) {
     } else {
         serverURL = Config.Serverurl
     }
-    
+
+    if strings.HasPrefix(serverURL, "https://"){
+        http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: Config.IgnoreCertificateCheck}
+    }
+
     req, _ := http.NewRequest("GET", strings.Join([]string{serverURL, "run", cmdName[0]}, "/"), nil)
     req.Header.Set("Token", validToken)
 
