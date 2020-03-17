@@ -77,7 +77,7 @@ func ProcessTwilioGatherEvent(w http.ResponseWriter, r *http.Request) {
 		StatusCode := DoNagiosACK(Host, Service, user, "")
 
 		if StatusCode != 200 {
-			fmt.Printf("DEBUG ERROR status code is %d\n", StatusCode)
+			fmt.Printf("DEBUG ERROR ProcessTwilioGatherEvent when talking to nagios cmd status code is %d\n", StatusCode)
 			http.Error(w, "ERROR when talking to nagios cmd", 500); return
 		}
 		fmt.Fprintf(w, "OK. An acknowledgement was sent to nagios"); return
@@ -96,7 +96,7 @@ func ProcessTwilioGatherEvent(w http.ResponseWriter, r *http.Request) {
 		StatusCode := DoNagiosDeleteAllComment(Host, Service)
 
 		if StatusCode != 200 {
-			fmt.Printf("DEBUG ERROR status code is %d\n", StatusCode)
+			fmt.Printf("DEBUG ERROR ProcessTwilioGatherEvent when talking to nagios cmd status code is %d\n", StatusCode)
 			http.Error(w, "ERROR when talking to nagios cmd", 500); return
 		}
 		fmt.Fprintf(w, "OK Delete nagios comment has been sent"); return
@@ -165,7 +165,7 @@ func MakeTwilioCall(w http.ResponseWriter, r *http.Request) {
 
 	switch reqAction {
 	case "call":
-		twilioCallUrl = GetConfigSave("twilio_call_url", "https://api.twilio.com/2010-04-01/Accounts/" + twilioSid + "/Calls.json")
+		twilioCallUrl = GetConfigSave("twilio_account_base_url", "https://api.twilio.com/2010-04-01/Accounts/") + twilioSid + "/Calls.json"
 		Twiml = fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
 			<Response>
 				<Say voice="alice">%s</Say>
@@ -182,7 +182,7 @@ func MakeTwilioCall(w http.ResponseWriter, r *http.Request) {
 			"StatusCallback": { twilioStatusCallBack + myCallId },
 		}
 	case "sms":
-		twilioCallUrl = GetConfigSave("twilio_sms_url", "https://api.twilio.com/2010-04-01/Accounts/" + twilioSid + "/Messages.json")
+		twilioCallUrl = GetConfigSave("twilio_account_base_url", "https://api.twilio.com/2010-04-01/Accounts/") + twilioSid + "/Messages.json"
 		formData = url.Values{
 			"From": { From },
 			"To": { To },
