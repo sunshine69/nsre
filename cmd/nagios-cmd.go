@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"os"
 	"io/ioutil"
 	"time"
 	"fmt"
@@ -79,9 +80,14 @@ func HandleNagiosDeleteAllComment(w *http.ResponseWriter, r *http.Request) {
 	} else {
 		data = fmt.Sprintf("[%d] DEL_ALL_SVC_COMMENTS;%s;%s\n", time.Now().Unix(), host, serviceDecs)
 	}
+
+	fi, e := os.Stat(nagiosCmdFile)
+	sendError := func(msg string) { fmt.Printf(msg); http.Error(*w, "ERROR", 500); return }
+	if e != nil { sendError("ERROR unexpected nagios cmd file - " + e.Error() + "\n" ) }
+	if fi.Mode()&os.ModeNamedPipe != 0 { sendError("ERROR unexpected nagios cmd file. It is not a pipe \n" ) }
+
     if err := ioutil.WriteFile(nagiosCmdFile, []byte(data), 0644); err != nil {
-		fmt.Printf("ERROR writting to nagios cmd file - %v\n", err)
-		http.Error(*w, "ERROR", 500); return
+		sendError("ERROR writting to nagios cmd file - " + err.Error() + "\n" )
 	}
 	fmt.Fprintf(*w, "OK"); return
 }
