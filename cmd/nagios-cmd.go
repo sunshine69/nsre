@@ -70,6 +70,8 @@ func HandleNagiosHostACK(w *http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(*w, "OK"); return
 }
 
+func sendError(w *http.ResponseWriter, msg string) { fmt.Printf(msg); http.Error(*w, "ERROR", 500) }
+
 func HandleNagiosDeleteAllComment(w *http.ResponseWriter, r *http.Request) {
 	nagiosCmdFile := GetConfigSave("nagios_cmd_file", "/var/spool/nagios/cmd/nagios.cmd")
 	host := r.FormValue("host")
@@ -82,12 +84,13 @@ func HandleNagiosDeleteAllComment(w *http.ResponseWriter, r *http.Request) {
 	}
 
 	fi, e := os.Stat(nagiosCmdFile)
-	sendError := func(msg string) { fmt.Printf(msg); http.Error(*w, "ERROR", 500); return }
-	if e != nil { sendError("ERROR unexpected nagios cmd file - " + e.Error() + "\n" ) }
-	if fi.Mode()&os.ModeNamedPipe != 0 { sendError("ERROR unexpected nagios cmd file. It is not a pipe \n" ) }
 
-    if err := ioutil.WriteFile(nagiosCmdFile, []byte(data), 0644); err != nil {
-		sendError("ERROR writting to nagios cmd file - " + err.Error() + "\n" )
-	}
-	fmt.Fprintf(*w, "OK"); return
+	if e != nil { sendError(w, "ERROR unexpected nagios cmd file - " + e.Error() + "\n" ); return }
+
+	if fi.Mode()&os.ModeNamedPipe != 0 {
+		if err := ioutil.WriteFile(nagiosCmdFile, []byte(data), 0644); err != nil {
+			sendError(w, "ERROR writting to nagios cmd file - " + err.Error() + "\n" ); return
+		}
+		fmt.Fprintf(*w, "OK"); return
+	} else { sendError(w, "ERROR unexpected nagios cmd file. It is not a pipe \n" ); return	}
 }
