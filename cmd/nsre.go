@@ -584,7 +584,7 @@ func HandleSNSEvent(w http.ResponseWriter, r *http.Request) {
 	Subj = Ternary(Subj == "", "no subject", Subj).(string)
 	Body := json.Get(msg, "Message").ToString()
 	Body = Ternary(Body == "", string(msg), Body).(string)
-	MakeTwilioCall(Action, Body, From, To, "HandleSNSEvent", Subj, "")
+	MakeTwilioCall("", Action, Body, From, To, "HandleSNSEvent", Subj, "")
 }
 
 //HandleRequests -

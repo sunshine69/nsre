@@ -141,9 +141,11 @@ func ProcessTwilioCallEvent(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
-func MakeTwilioCall(reqAction, Body, From, To, Host, Service, gatherMenuStr string) error {
-
-	fmt.Printf("DEBUG Body: %s - From: %s - To: %s Host: '%s' - Service: '%s'\n", Body, From, To, Host, Service)
+func MakeTwilioCall(myCallId, reqAction, Body, From, To, Host, Service, gatherMenuStr string) error {
+	if myCallId == "" {
+		myCallId = uuid.New().String()
+	}
+	fmt.Printf("DEBUG Start a new call with ID: '%s' - Body: %s - From: %s - To: %s Host: '%s' - Service: '%s'\n", myCallId, Body, From, To, Host, Service)
 
 	twilioSid := GetConfig("twilio_sid")
 	twilioSec := GetConfig("twilio_sec")
@@ -151,7 +153,6 @@ func MakeTwilioCall(reqAction, Body, From, To, Host, Service, gatherMenuStr stri
 	twilioStatusCallBack := fmt.Sprintf("https://%s:%d/twilio/events/", Config.Serverdomain, Config.Port)
 
 	twilioCallUrl, Twiml := "", ""
-	myCallId := uuid.New().String()
 	formData := url.Values{}
 
 	switch reqAction {
@@ -289,7 +290,7 @@ func HandleMakeTwilioCall(w http.ResponseWriter, r *http.Request) {
 </Gather>`, gatherActionURL),
 		"").(string)
 
-	if e := MakeTwilioCall(reqAction, Body, From, To, Host, Service, gatherMenuStr); e != nil {
+	if e := MakeTwilioCall(myCallId, reqAction, Body, From, To, Host, Service, gatherMenuStr); e != nil {
 		fmt.Printf("ERROR %s\n", e.Error())
 		http.Error(w, e.Error(), 500)
 		return
