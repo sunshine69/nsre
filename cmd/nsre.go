@@ -577,7 +577,7 @@ func DumpPost(w http.ResponseWriter, r *http.Request) {
 //HandleSNSEvent - From/To/action
 func HandleSNSEvent(w http.ResponseWriter, r *http.Request) {
 	msg, _ := ioutil.ReadAll(r.Body)
-	SaveDumpData("", "", r.Method, string(msg))
+	SaveDumpData("HandleSNSEvent", "twilio_call", r.Method, string(msg))
 	vars := mux.Vars(r)
 	From, To, Action := vars["from"], vars["to"], vars["action"]
 	Subj := json.Get(msg, "Subject").ToString()
