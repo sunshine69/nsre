@@ -540,21 +540,51 @@ func DoUploadLog(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// For debugging purposes only
+// For debugging purposes only. The endpoint handler can temporary call this to examine the data structure
+func SaveDumpData(host, application, logfile, message string) *LogData {
+	host = Ternary(host == "", "DEBUG", host).(string)
+	application = Ternary(application == "", "DUMPER", application).(string)
+
+	logData := LogData{
+		Timestamp: time.Now().UnixNano(),
+		Datelog: time.Now().UnixNano(),
+		Host: host,
+		Application: application,
+		Logfile: logfile,
+		Message: message,
+	}
+	data, _ := json.Marshal(logData)
+	InsertLog(data)
+	return &logData
+}
+
 func DumpPost(w http.ResponseWriter, r *http.Request) {
 	requestDump, err := httputil.DumpRequest(r, true)
 	if err != nil {
 		fmt.Println(err)
 	}
 	fmt.Printf("DEBUG - DUMP\n\n%s\n",requestDump)
-
 	msg, _ := ioutil.ReadAll(r.Body)
 	fmt.Printf("DEBUG - Body\n\n%s\n",msg)
+
+	SaveDumpData("", "", r.Method, string(msg))
 
 	r.Body = ioutil.NopCloser(bytes.NewBuffer(msg))
 	fmt.Fprintf(w, "OK")
 	return
+}
 
+//HandleSNSEvent - From/To/action
+func HandleSNSEvent(w http.ResponseWriter, r *http.Request) {
+	msg, _ := ioutil.ReadAll(r.Body)
+	SaveDumpData("", "", r.Method, string(msg))
+	vars := mux.Vars(r)
+	From, To, Action := vars["from"], vars["to"], vars["action"]
+	Subj := json.Get(msg, "Subject").ToString()
+	Subj = Ternary(Subj == "", "no subject", Subj).(string)
+	Body := json.Get(msg, "Message").ToString()
+	Body = Ternary(Body == "", string(msg), Body).(string)
+	MakeTwilioCall(Action, Body, From, To, "HandleSNSEvent", Subj, "")
 }
 
 //HandleRequests -
@@ -587,16 +617,18 @@ func HandleRequests() {
 		router.HandleFunc("/twilio/gather/{call_id}", ProcessTwilioGatherEvent).Methods("POST")
 		twilioSid := GetConfig("twilio_sid")
 		twilioSec := GetConfig("twilio_sec")
-		router.Handle("/twilio/{action:(?:call|sms)}", IsBasicAuth(MakeTwilioCall, twilioSid, twilioSec, "Twilio")).Methods("POST")
+		router.Handle("/twilio/{action:(?:call|sms)}", IsBasicAuth(HandleMakeTwilioCall, twilioSid, twilioSec, "Twilio")).Methods("POST")
 
 		//Debugging
-
 		router.Handle("/dump", IsBasicAuth(DumpPost, GetConfig("dump_username", ""), GetConfig("dump_password", ""), "DumpRequest")).Methods("POST", "GET", "PUT")
 
 		//Nagios commands
 		router.Handle("/nagios/{command}", isAuthorized(ProcessNagiosCommand)).Methods("POST")
 		//Pagerduty event - See the file pagerduty.go for more
 		router.Handle("/pagerduty", IsBasicAuth(HandlePagerDutyEvent, GetConfig("pagerduty_username"), GetConfig("pagerduty_password"), "PagerDuty" )).Methods("POST")
+
+		//AWS SNS handler endpoint
+		router.Handle("/sns/{from}/{to}/{action}", IsBasicAuth(HandleSNSEvent, GetConfig("sns_username", ""), GetConfig("sns_password", ""), "AWS SNS")).Methods("POST", "GET", "PUT")
 	}
 
 	srv := &http.Server{
