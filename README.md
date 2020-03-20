@@ -346,6 +346,10 @@ awslogs: []
 
 See comment in `cmd/twilio.go` for more information.
 
+### AWS SNS subscription endpoint to send sms/voice message
+
+See the comment in `cmd/aws-sns.go`.
+
 ### External program to ship log
 
 If you do nto sue nsre in client mode to tail and ship log, but want to send log directly from your app then read on.
