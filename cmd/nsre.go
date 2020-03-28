@@ -555,12 +555,8 @@ func HandleRequests() {
 	//Probably we should drop the non jwt key section and enforce the use of jwt key all the time
 	if Config.JwtKey == "" {
 		log.Printf("WARNING WARNING - JWTKEY is not set. Log server will allow anyone to put log in\n")
-		router.HandleFunc("/log/{idx_name}/{type_name}/{unique_id}", ProcessLog).Methods("POST")
-		router.HandleFunc("/log/{idx_name}/{type_name}", ProcessLog).Methods("POST")
 		router.HandleFunc("/log", ProcessLog).Methods("POST")
 	} else{
-		router.Handle("/log/{idx_name}/{type_name}/{unique_id}", isAuthorized(ProcessLog)).Methods("POST")
-		router.Handle("/log/{idx_name}/{type_name}", isAuthorized(ProcessLog)).Methods("POST")
 		router.Handle("/log/load", isOauthAuthorized(DoUploadLog)).Methods("POST", "GET")
 		router.Handle("/log", isAuthorized(ProcessLog)).Methods("POST")
 
