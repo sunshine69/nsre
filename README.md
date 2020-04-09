@@ -397,4 +397,12 @@ Body of request should be a json data matching the json schema below.
 }
 ```
 
+### ROAD MAP
+
+As you can see this is first intended to be a log store but intentionaly designed to be a generic document store uisng sqlite backend thus we can add more features integrated in to use that, like the twilio proxy or nagios communication which uses the document store by itself to process its logic.
+
+I will implement a API search and get a single document when I have time or having a use case for it. This might be a shell scripts to search the document store to find something and parse the json string using jq and process the required action.
+
+As it is meant to be intuitive and easy to use, understand, it would never be a RESTFull compliant. I dont intend to make it so.
+
 END OF DOCUMENT

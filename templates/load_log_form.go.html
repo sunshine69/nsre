@@ -9,11 +9,11 @@
     <legend>Log Creation Form</legend>
     <table>
         <tr>
-            <td title="value for the host field.">Host:</td>
+            <td title="value for the host field. Think of it as a namespace or where the document is generated">Host:</td>
             <td><input type="text" name="host" value="manual" size="35"/></td>
         </tr>
         <tr>
-            <td title="value for the application field">Application:</td>
+            <td title="value for the application field. Think of it as which process/app generate the document.">Application:</td>
             <td><input type="text" name="application" value="user" size="35"/></td>
         </tr>
         <tr>
@@ -21,7 +21,7 @@
             <td><input type="text" name="logfile" value="" size="35"/></td>
         </tr>
         <tr>
-            <td title="value for the message field">Message:</td>
+            <td title="value for the message field. Think of it as a generic document. You can store anything, text, json string. You can search it later using sqlite json syntax.">Message:</td>
             <td><textarea name="message" wrap="soft" autocomplete="on"
                 cols="150" rows="25"></textarea></td>
         </tr>
