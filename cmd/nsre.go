@@ -1,8 +1,10 @@
 package cmd
 
 import (
+	"crypto/tls"
+	"golang.org/x/crypto/acme/autocert"
+	"golang.org/x/crypto/acme"
 	"errors"
-	"net/http/httputil"
 	"mime/multipart"
 	"crypto/subtle"
 	"bufio"
@@ -537,23 +539,6 @@ func DoUploadLog(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// For debugging purposes only
-func DumpPost(w http.ResponseWriter, r *http.Request) {
-	requestDump, err := httputil.DumpRequest(r, true)
-	if err != nil {
-		fmt.Println(err)
-	}
-	fmt.Printf("DEBUG - DUMP\n\n%s\n",requestDump)
-
-	msg, _ := ioutil.ReadAll(r.Body)
-	fmt.Printf("DEBUG - Body\n\n%s\n",msg)
-
-	r.Body = ioutil.NopCloser(bytes.NewBuffer(msg))
-	fmt.Fprintf(w, "OK")
-	return
-
-}
-
 //HandleRequests -
 func HandleRequests() {
 	router := mux.NewRouter()
@@ -570,12 +555,8 @@ func HandleRequests() {
 	//Probably we should drop the non jwt key section and enforce the use of jwt key all the time
 	if Config.JwtKey == "" {
 		log.Printf("WARNING WARNING - JWTKEY is not set. Log server will allow anyone to put log in\n")
-		router.HandleFunc("/log/{idx_name}/{type_name}/{unique_id}", ProcessLog).Methods("POST")
-		router.HandleFunc("/log/{idx_name}/{type_name}", ProcessLog).Methods("POST")
 		router.HandleFunc("/log", ProcessLog).Methods("POST")
 	} else{
-		router.Handle("/log/{idx_name}/{type_name}/{unique_id}", isAuthorized(ProcessLog)).Methods("POST")
-		router.Handle("/log/{idx_name}/{type_name}", isAuthorized(ProcessLog)).Methods("POST")
 		router.Handle("/log/load", isOauthAuthorized(DoUploadLog)).Methods("POST", "GET")
 		router.Handle("/log", isAuthorized(ProcessLog)).Methods("POST")
 
@@ -584,16 +565,18 @@ func HandleRequests() {
 		router.HandleFunc("/twilio/gather/{call_id}", ProcessTwilioGatherEvent).Methods("POST")
 		twilioSid := GetConfig("twilio_sid")
 		twilioSec := GetConfig("twilio_sec")
-		router.Handle("/twilio/{action:(?:call|sms)}", IsBasicAuth(MakeTwilioCall, twilioSid, twilioSec, "Twilio")).Methods("POST")
+		router.Handle("/twilio/{action:(?:call|sms)}", IsBasicAuth(HandleMakeTwilioCall, twilioSid, twilioSec, "Twilio")).Methods("POST")
 
 		//Debugging
-
 		router.Handle("/dump", IsBasicAuth(DumpPost, GetConfig("dump_username", ""), GetConfig("dump_password", ""), "DumpRequest")).Methods("POST", "GET", "PUT")
 
 		//Nagios commands
 		router.Handle("/nagios/{command}", isAuthorized(ProcessNagiosCommand)).Methods("POST")
 		//Pagerduty event - See the file pagerduty.go for more
 		router.Handle("/pagerduty", IsBasicAuth(HandlePagerDutyEvent, GetConfig("pagerduty_username"), GetConfig("pagerduty_password"), "PagerDuty" )).Methods("POST")
+
+		//AWS SNS handler endpoint
+		router.Handle("/sns/{from}/{to}/{action}", IsBasicAuth(HandleSNSEvent, GetConfig("sns_username", ""), GetConfig("sns_password", ""), "AWS SNS")).Methods("POST", "GET", "PUT")
 	}
 
 	srv := &http.Server{
@@ -605,14 +588,37 @@ func HandleRequests() {
         Handler: router, // Pass our instance of gorilla/mux in.
     }
 
-	if Config.Sslkey != "" {
+	if Config.Sslkey == "" {
+		if Config.LetsEncryptEnabled {
+			client := &acme.Client{DirectoryURL: autocert.DefaultACMEDirectory }
+			// client := &acme.Client{DirectoryURL: "https://acme-staging-v02.api.letsencrypt.org/directory" }
+			certManager := autocert.Manager{
+				Prompt: autocert.AcceptTOS,
+				Cache:  autocert.DirCache("certs"),
+				HostPolicy: autocert.HostWhitelist(Config.Serverdomain),
+				Client: client,
+			}
+			srv.TLSConfig = &tls.Config{
+				GetCertificate: certManager.GetCertificate,
+			}
+			// server := &http.Server{
+			// 	Addr:    ":8000",
+			// 	Handler: mux,
+			// 	TLSConfig: &tls.Config{
+			// 		GetCertificate: certManager.GetCertificate,
+			// 	},
+			// }
+			go http.ListenAndServe(":80", certManager.HTTPHandler(nil))
+			log.Printf("Start SSL/TLS server with letsencrypt enabled on port %d\n", Config.Port)
+			log.Fatal(srv.ListenAndServeTLS("", ""))
+		} else{
+			log.Printf("Start server on port %d\n", Config.Port)
+			log.Fatal(srv.ListenAndServe())
+		}
+	} else {
 		log.Printf("Start SSL/TLS server on port %d\n", Config.Port)
 		log.Fatal(srv.ListenAndServeTLS(Config.Sslcert, Config.Sslkey))
-	} else {
-		log.Printf("Start server on port %d\n", Config.Port)
-		log.Fatal(srv.ListenAndServe())
 	}
-
 }
 //StartServer - We may spawn other listener within this func
 func StartServer() {

@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"errors"
+	"os"
 	"io/ioutil"
 	"time"
 	"fmt"
@@ -50,6 +52,8 @@ func HandleNagiosServiceACK(w *http.ResponseWriter, r *http.Request) {
 	comment = Ternary(comment == "", "Acknowledgement From Twilio", comment).(string)
 	data := fmt.Sprintf("[%d] ACKNOWLEDGE_SVC_PROBLEM;%s;%s;2;1;1;%s;%s\n", time.Now().Unix(), host, serviceDecs, user, comment)
 	fmt.Printf("DEBUG data going to send to nagios '%s'\n", data)
+	nagiosCmdOK, e := checkNagiosCommandFile(nagiosCmdFile)
+	if !nagiosCmdOK { sendError(w, e.Error()); return }
     if err := ioutil.WriteFile(nagiosCmdFile, []byte(data), 0644); err != nil {
 		fmt.Printf("ERROR writting to nagios cmd file - %v\n", err)
 		http.Error(*w, "ERROR", 500); return
@@ -62,12 +66,24 @@ func HandleNagiosHostACK(w *http.ResponseWriter, r *http.Request) {
 	host := r.FormValue("host")
 	user := r.FormValue("user")
 	data := fmt.Sprintf("[%d] ACKNOWLEDGE_HOST_PROBLEM;%s;2;1;1;%s;Acknowledgement From Twilio\n", time.Now().Unix(), host, user)
+	nagiosCmdOK, e := checkNagiosCommandFile(nagiosCmdFile)
+	if !nagiosCmdOK { sendError(w, e.Error()); return }
     if err := ioutil.WriteFile(nagiosCmdFile, []byte(data), 0644); err != nil {
 		fmt.Printf("ERROR writting to nagios cmd file - %v\n", err)
 		http.Error(*w, "ERROR", 500); return
 	}
 	fmt.Fprintf(*w, "OK"); return
 }
+
+func checkNagiosCommandFile(nagiosCmdFile string) (bool, error) {
+	fi, e := os.Stat(nagiosCmdFile)
+	if e != nil { return false, e }
+	if fi.Mode()&os.ModeNamedPipe != 0 {
+		return true, nil
+	} else { return	false, errors.New("ERROR " + nagiosCmdFile + " is not a named pipe\n") }
+}
+
+func sendError(w *http.ResponseWriter, msg string) { fmt.Printf(msg); http.Error(*w, "ERROR", 500) }
 
 func HandleNagiosDeleteAllComment(w *http.ResponseWriter, r *http.Request) {
 	nagiosCmdFile := GetConfigSave("nagios_cmd_file", "/var/spool/nagios/cmd/nagios.cmd")
@@ -79,9 +95,12 @@ func HandleNagiosDeleteAllComment(w *http.ResponseWriter, r *http.Request) {
 	} else {
 		data = fmt.Sprintf("[%d] DEL_ALL_SVC_COMMENTS;%s;%s\n", time.Now().Unix(), host, serviceDecs)
 	}
-    if err := ioutil.WriteFile(nagiosCmdFile, []byte(data), 0644); err != nil {
-		fmt.Printf("ERROR writting to nagios cmd file - %v\n", err)
-		http.Error(*w, "ERROR", 500); return
+
+	nagiosCmdOK, e := checkNagiosCommandFile(nagiosCmdFile)
+	if !nagiosCmdOK { sendError(w, e.Error()); return }
+	if err := ioutil.WriteFile(nagiosCmdFile, []byte(data), 0644); err != nil {
+		sendError(w, "ERROR writting to nagios cmd file - " + err.Error() + "\n" ); return
 	}
 	fmt.Fprintf(*w, "OK"); return
+
 }

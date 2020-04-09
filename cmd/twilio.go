@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"errors"
 	"bytes"
 	"strconv"
 	"strings"
@@ -67,17 +68,41 @@ func ProcessTwilioGatherEvent(w http.ResponseWriter, r *http.Request) {
 		user := r.FormValue("To") //Use number to identify user
 		currentItem, extraInfo := GetTwilioCall(myCallId)
 		if currentItem == "" {//No previous call.
+			fmt.Printf("DEBUG ProcessTwilioGatherEvent myCallId '%s' return empty. extraInfo: '%s'\n", myCallId, extraInfo)
 			return
 		}
 		Host := json.Get([]byte(extraInfo), "Host").ToString()
 		Service := json.Get([]byte(extraInfo), "Service").ToString()
 
+		fmt.Printf("DEBUG ProcessTwilioGatherEvent Processing for digit '%s'. Host: '%s' - Service: '%s'\n", Digit, Host, Service)
 		StatusCode := DoNagiosACK(Host, Service, user, "")
 
 		if StatusCode != 200 {
+			fmt.Printf("DEBUG ERROR ProcessTwilioGatherEvent when talking to nagios cmd status code is %d\n", StatusCode)
 			http.Error(w, "ERROR when talking to nagios cmd", 500); return
 		}
-		fmt.Fprintf(w, "OK"); return
+		fmt.Fprintf(w, "OK. An acknowledgement was sent to nagios"); return
+
+	case "5"://Delete Nagios comment. Used when nagios notify service recovery
+		myCallId := vars["call_id"]
+		currentItem, extraInfo := GetTwilioCall(myCallId)
+		if currentItem == "" {//No previous call.
+			fmt.Printf("DEBUG ProcessTwilioGatherEvent myCallId '%s' return empty. extraInfo: '%s'\n", myCallId, extraInfo)
+			return
+		}
+		Host := json.Get([]byte(extraInfo), "Host").ToString()
+		Service := json.Get([]byte(extraInfo), "Service").ToString()
+
+		fmt.Printf("DEBUG ProcessTwilioGatherEvent Processing for digit '%s'. Host: '%s' - Service: '%s'\n", Digit, Host, Service)
+		StatusCode := DoNagiosDeleteAllComment(Host, Service)
+
+		if StatusCode != 200 {
+			fmt.Printf("DEBUG ERROR ProcessTwilioGatherEvent when talking to nagios cmd status code is %d\n", StatusCode)
+			http.Error(w, "ERROR when talking to nagios cmd", 500); return
+		}
+		fmt.Fprintf(w, "OK Delete nagios comment has been sent"); return
+	case "0":
+		fmt.Fprintf(w, "OK. No action."); return
 	}
 }
 
@@ -116,38 +141,28 @@ func ProcessTwilioCallEvent(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
-func MakeTwilioCall(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	reqAction := vars["action"]
-
-	Body := r.FormValue("Body")
-	From := r.FormValue("From")
-	To := r.FormValue("To")
-	//These data is saved to get back to nagios in the Gather action
-	Host := r.FormValue("Host")
-	Service := r.FormValue("Service")
-	fmt.Printf("DEBUG Body: %s - From: %s - To: %s Host: '%s' - Service: '%s'\n", Body, From, To, Host, Service)
+func MakeTwilioCall(myCallId, reqAction, Body, From, To, Host, Service, gatherMenuStr string) error {
+	if myCallId == "" {
+		myCallId = uuid.New().String()
+	}
+	fmt.Printf("DEBUG Start a new call with ID: '%s' - Body: %s - From: %s - To: %s Host: '%s' - Service: '%s'\n", myCallId, Body, From, To, Host, Service)
 
 	twilioSid := GetConfig("twilio_sid")
 	twilioSec := GetConfig("twilio_sec")
 	//Twilio will post to this url + /<my_call_sid>
-	twilioStatusCallBack := GetConfigSave("twilio_callback", fmt.Sprintf("https://%s/twilio/events/", Config.Serverdomain))
+	twilioStatusCallBack := fmt.Sprintf("https://%s:%d/twilio/events/", Config.Serverdomain, Config.Port)
 
 	twilioCallUrl, Twiml := "", ""
-	myCallId := uuid.New().String()
 	formData := url.Values{}
-	gatherActionURL := GetConfigSave("gather_action_url", fmt.Sprintf("https://%s/twilio/gather/%s", Config.Serverdomain, myCallId))
 
 	switch reqAction {
 	case "call":
-		twilioCallUrl = GetConfigSave("twilio_call_url", "https://api.twilio.com/2010-04-01/Accounts/" + twilioSid + "/Calls.json")
+		twilioCallUrl = GetConfigSave("twilio_account_base_url", "https://api.twilio.com/2010-04-01/Accounts/") + twilioSid + "/Calls.json"
 		Twiml = fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
 			<Response>
 				<Say voice="alice">%s</Say>
-				<Gather input="speech dtmf" timeout="5" numDigits="4" action="%s" method="POST">
-					<Say>Please press 4 to acknowledge</Say>
-				</Gather>
-			</Response>`, Body, gatherActionURL)
+				%s
+			</Response>`, Body, gatherMenuStr)
 
 		formData = url.Values{
 			"Twiml": { Twiml },
@@ -157,7 +172,7 @@ func MakeTwilioCall(w http.ResponseWriter, r *http.Request) {
 			"StatusCallback": { twilioStatusCallBack + myCallId },
 		}
 	case "sms":
-		twilioCallUrl = GetConfigSave("twilio_sms_url", "https://api.twilio.com/2010-04-01/Accounts/" + twilioSid + "/Messages.json")
+		twilioCallUrl = GetConfigSave("twilio_account_base_url", "https://api.twilio.com/2010-04-01/Accounts/") + twilioSid + "/Messages.json"
 		formData = url.Values{
 			"From": { From },
 			"To": { To },
@@ -171,7 +186,7 @@ func MakeTwilioCall(w http.ResponseWriter, r *http.Request) {
 	fmt.Printf("DEBUG Twilio Action '%s'\n", reqAction)
 	// twilioCallUrl = "https://note.xvt.technology:8000/dumppost"
 
-	makeCall := func() {
+	makeCall := func() error {
 		encodedData := formData.Encode()
 		req, _ := http.NewRequest("POST", twilioCallUrl , strings.NewReader(encodedData))
 		req.SetBasicAuth(twilioSid, twilioSec)
@@ -181,17 +196,13 @@ func MakeTwilioCall(w http.ResponseWriter, r *http.Request) {
 		client := &http.Client{}
 		res, err := client.Do(req)
 		if err != nil {
-			log.Printf("ERROR MakeTwilioCall Send Req %v\n", err)
-			http.Error(w, fmt.Sprintf("ERROR %v", err), 500)
-			return
+			return errors.New("ERROR MakeTwilioCall Send Req " + err.Error() )
 		}
 		defer res.Body.Close()
 
 		body, err := ioutil.ReadAll(res.Body)
 		if err != nil {
-			log.Printf("ERROR MakeTwilioCall Get Response %v\n", err)
-			http.Error(w, fmt.Sprintf("ERROR %v", err), 500)
-			return
+			return errors.New("ERROR MakeTwilioCall Get Response " + err.Error())
 		}
 		logData := LogData{
 			Timestamp: time.Now().UnixNano(),
@@ -203,6 +214,7 @@ func MakeTwilioCall(w http.ResponseWriter, r *http.Request) {
 		}
 		data, _ := json.Marshal(logData)
 		InsertLog(data)
+		return nil
 	}
 	AssertCall := func() {
 		tryCount := 0
@@ -212,7 +224,8 @@ func MakeTwilioCall(w http.ResponseWriter, r *http.Request) {
 			existingCall, _ := GetTwilioCall(myCallId)
 			fmt.Printf("DEBUG count: %d - existingCall '%s'\nAction: '%s'\n", tryCount, existingCall, action)
 			if existingCall == "" || action == "make_call" { //New call
-				makeCall()
+				e := makeCall()
+				if e != nil { fmt.Printf(e.Error() + "\n") }
 			}
 			if reqAction == "call"{
 				CallStatus := json.Get([]byte(existingCall), "CallStatus").ToString()
@@ -221,9 +234,9 @@ func MakeTwilioCall(w http.ResponseWriter, r *http.Request) {
 				case "completed":
 					action = "exit"
 					break
-				case "ringing", "queued", "in-progress", "":
+				case "ringing", "queued", "in-progress", "busy", "":
 					action = "wait"
-				case "busy", "failed", "no-answer":
+				case "failed", "no-answer":
 					action = "make_call"
 				}
 			} else if reqAction == "sms" {
@@ -251,6 +264,37 @@ func MakeTwilioCall(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	go AssertCall()
+	return nil
+}
+
+
+func HandleMakeTwilioCall(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	reqAction := vars["action"]
+
+	Body := r.FormValue("Body")
+	From := r.FormValue("From")
+	To := r.FormValue("To")
+	//These data is saved to get back to nagios in the Gather action
+	Host := r.FormValue("Host")
+	Service := r.FormValue("Service")
+
+	myCallId := uuid.New().String()
+
+	gatherActionURL := fmt.Sprintf("https://%s:%d/twilio/gather/%s", Config.Serverdomain, Config.Port, myCallId)
+
+	gatherMenuStr := Ternary(
+		reqAction == "call",
+		fmt.Sprintf(`<Gather input="speech dtmf" timeout="5" numDigits="1" action="%s" method="POST">
+	<Say>Press 4 to acknowledge. Press 5 to delete acknowledgement if this is a recovery notification. Press 0 if previous acknowledgement is sent.</Say>
+</Gather>`, gatherActionURL),
+		"").(string)
+
+	if e := MakeTwilioCall(myCallId, reqAction, Body, From, To, Host, Service, gatherMenuStr); e != nil {
+		fmt.Printf("ERROR %s\n", e.Error())
+		http.Error(w, e.Error(), 500)
+		return
+	}
 	fmt.Fprintf(w, "OK scheduled")
 	return
 }

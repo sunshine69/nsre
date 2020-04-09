@@ -20,7 +20,9 @@ func DoNagiosDeleteAllComment(Host, Service string) int {
 	validToken, _ := GenerateJWT()
 
 	client := &http.Client{}
-	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: Config.IgnoreCertificateCheck}
+	if strings.HasPrefix(nagiosNsreBaseURL, "https://") {
+		http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: Config.IgnoreCertificateCheck}
+	}
 
 	command := "del_all_comment"
 
@@ -46,7 +48,9 @@ func DoNagiosACK(Host, Service, User, Comment string) int {
 	validToken, _ := GenerateJWT()
 
 	client := &http.Client{}
-	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: Config.IgnoreCertificateCheck}
+	if strings.HasPrefix(nagiosNsreBaseURL, "https://") {
+		http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: Config.IgnoreCertificateCheck}
+	}
 
 	command := Ternary(Service == "", "host_ack", "service_ack").(string)
 
@@ -56,13 +60,16 @@ func DoNagiosACK(Host, Service, User, Comment string) int {
 		"user": {User},
 		"comment": {Comment},
 	}
-	req, _ := http.NewRequest("POST", nagiosNsreBaseURL + "/nagios/" + command, strings.NewReader(formData.Encode()))
+	req, err := http.NewRequest("POST", nagiosNsreBaseURL + "/nagios/" + command, strings.NewReader(formData.Encode()))
+	if err != nil {
+		fmt.Printf("ERROR %s\n", err.Error())
+	}
 	req.Header.Set("Token", validToken)
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 
 	res, err := client.Do(req)
 	if err != nil {
-		fmt.Printf("ERROR - %v", err)
+		fmt.Printf("ERROR - %s\n", err.Error())
 	}
 	defer res.Body.Close()
 	return res.StatusCode

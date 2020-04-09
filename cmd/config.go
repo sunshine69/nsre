@@ -55,6 +55,8 @@ type AppConfig struct { //Why do I have to tag every field! Because yaml driver 
     AWSLogs []AWSLogConfig
     IgnoreCertificateCheck bool
     LogRetention string
+    LetsEncryptEnabled bool
+    LetsEncryptEmail string
 }
 
 //AWSLogConfig -
@@ -134,9 +136,12 @@ func GenerateDefaultConfig(opt ...interface{}) (e error) {
         Sslcert: "",
         Sslkey: "",
         PasswordFilterPatterns: []string {`([Pp]assword|[Pp]assphrase)['"]*[\:\=]*[\s\n]*[^\s]+[\s;]`},
+        LetsEncryptEnabled: false,
+        LetsEncryptEmail: "someone@somewhere",
     }
 
-    var fPath, serverurl, jwtkey, logfile, appname, sslcert, sslkey, serverdomain, logdbpath string
+    var fPath, serverurl, jwtkey, logfile, appname, sslcert, sslkey, serverdomain, logdbpath, letsencryptemail string
+    var letsencryptenabled bool
     var port int
 
     for i, v := range(opt) {
@@ -163,6 +168,10 @@ func GenerateDefaultConfig(opt ...interface{}) (e error) {
                 serverdomain = opt[i+1].(string)
             case "logdbpath":
                 logdbpath = opt[i+1].(string)
+            case "letsencryptenabled":
+                letsencryptenabled = opt[i+1].(bool)
+            case "letsencryptemail":
+                letsencryptemail = opt[i+1].(string)
             }
         }
     }
@@ -199,6 +208,8 @@ func GenerateDefaultConfig(opt ...interface{}) (e error) {
         if serverdomain != "" { defaultConfig.Serverdomain = serverdomain }
         defaultConfig.Port = port
         defaultConfig.Logdbpath = logdbpath
+        defaultConfig.LetsEncryptEnabled = letsencryptenabled
+        defaultConfig.LetsEncryptEmail = letsencryptemail
 
         data, e = yaml.Marshal(defaultConfig)
         if e != nil { log.Fatalf("ERROR can not dump default config yaml")}
@@ -248,7 +259,7 @@ func LoadConfig(fPath string) (e error) {
         PasswordFilterPtns = append(PasswordFilterPtns, regexp.MustCompile(ptn))
     }
 
-    if Config.Sslkey == "" {
+    if Config.Sslkey == "" && ! Config.LetsEncryptEnabled {
         ServerProtocol = "http"
     } else {
         ServerProtocol = "https"
