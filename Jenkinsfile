@@ -1,5 +1,6 @@
 pipeline {
     agent { label 'master' }
+
     options {
         ansiColor('xterm')
     }
@@ -34,6 +35,7 @@ pipeline {
                 }
             }
         }
+
         stage('Gather artifacts') {
             steps {
                 script {
