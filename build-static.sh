@@ -13,7 +13,7 @@ echo "and then commit changes into git."
 
 #docker run --rm -v $(pwd):/work --workdir /work --entrypoint go nsre-alpine-build:latest build --tags "icu json1 fts5 secure_delete" --ldflags '-extldflags "-static" -w -s' -o nsre-linux-amd64-static
 
-docker rm -f golang-alpine-build
+docker rm -f golang-alpine-build || true
 docker run --name golang-alpine-build -v $(pwd):/work --workdir /work --entrypoint go --env-file ~/.gobuild-linux-cgo golang-alpine-build:latest build --tags "icu json1 secure_delete" --ldflags '-extldflags "-static" -w -s' -o nsre-linux-amd64-static main.go
 
 #mv -f nsre-linux-amd64-static ~/Public/nsre-linux-amd64-static
