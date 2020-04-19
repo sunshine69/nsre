@@ -1,12 +1,14 @@
 FROM golang:alpine
 
+RUN addgroup -g 1000 jenkins ; adduser -u 1000 -G jenkins jenkins -D
+
 RUN apk update && \
     apk add --no-cache git ca-certificates tzdata gcc musl-dev && \
     update-ca-certificates
 
-WORKDIR /work/
+# WORKDIR /work/
 
-COPY . .
+# COPY . .
 
 # Fetch dependencies.
-RUN go get -d -v
+# RUN go get -d -v

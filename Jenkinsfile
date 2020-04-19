@@ -1,5 +1,6 @@
 pipeline {
     agent { label 'master' }
+
     options {
         ansiColor('xterm')
     }
@@ -8,12 +9,15 @@ pipeline {
         stage('Checkout') {
             steps {
                 script {
+                env.BUILD_VERSION = VersionNumber projectStartDate: '2018-11-07', versionNumberString: "${BUILD_NUMBER}", versionPrefix: "0.0.", worstResultForIncrement: 'SUCCESS'
+                echo "Version:  ${BUILD_VERSION}"
+
                 GIT_REVISION = sh(returnStdout: true, script: """
                     git rev-parse --short HEAD"""
                 ).trim()
                 def PWD = pwd()
                 echo "Check out REVISION: $GIT_REVISION on $PWD"
-                PUSH_DOCKER_IMAGE_AND_DEPLOY_TO_INT = (['master', 'jenkins'].contains(GIT_BRANCH) ||
+                DO_GATHER_ARTIFACT_BRANCH = (['master', 'jenkins'].contains(GIT_BRANCH) ||
                     GIT_BRANCH ==~ /release\-[\d\-\.]+/ ||
                     GIT_BRANCH ==~ /[^\s]+enable_docker_image_push$/)
                 checkout changelog: false, poll: false, scm: [$class: 'GitSCM', branches: [[name: '*/master']], doGenerateSubmoduleConfigurations: false, extensions: [[$class: 'RelativeTargetDirectory', relativeTargetDir: 'jenkins-helper']], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'github-personal-jenkins', url: 'https://github.com/sunshine69/jenkins-helper.git']]]
@@ -21,29 +25,62 @@ pipeline {
                 }//script
             }//steps
         }//stage
-
-        stage('Build') {
+        
+        stage('Generate build scripts') {
             steps {
                 script {
-                    echo "Start build"
-                    VERSION_PREFIX = "${GIT_BRANCH}-${GIT_REVISION}-".replace('/', '-')
-                    BUILD_VERSION = VersionNumber projectStartDate: '2018-11-07', versionNumberString: "${BUILD_NUMBER}", versionPrefix: "${VERSION_PREFIX}", worstResultForIncrement: 'SUCCESS'
-                    echo "Version:  $BUILD_VERSION"
-                    echo "Revision: $GIT_REVISION"
-                    sh './build-static.sh'
-                }
-            }
+                  utils.generate_add_user_script()
+                  //utils.generate_aws_environment()
+                  sh '''cat <<EOF > build.sh
+./build-jenkins.sh
+EOF
+'''
+                    sh 'chmod +x build.sh'
+                }//script
+            }//steps
         }
+
+        stage('Run the command within the docker environment') {
+            steps {
+                script {
+                    utils.run_build_script([
+                    //Make sure you build this image ready - having user jenkins and cache go mod for that user.
+                        'docker_image': 'golang-alpine-build-jenkins:latest', 
+                        'docker_net_opt': '',
+//define the name here so we can save a image cache in the script save-docker-image-cache.sh
+                        'docker_extra_opt': '--name golang-alpine-build-jenkins',
+//Uncomment these when you build with the golang-alpine from scratch. After we
+//can commented out as the image is saved
+                        //'outside_scripts': ['save-docker-image-cache.sh'],
+                        //'extra_build_scripts': ['fix-godir-ownership.sh'],
+                        //'run_as_user': ['fix-godir-ownership.sh': 'root'],
+                    ])
+                }//script
+            }//steps
+        }//stage
+
         stage('Gather artifacts') {
             steps {
                 script {
                     utils.save_build_data(['artifact_class': 'nsre'])
 
-                    if (PUSH_DOCKER_IMAGE_AND_DEPLOY_TO_INT) {
-                      archiveArtifacts allowEmptyArchive: true, artifacts: 'nsre-linux-amd64-static', fingerprint: true, onlyIfSuccessful: true
+                    if (DO_GATHER_ARTIFACT_BRANCH) {
+                      archiveArtifacts allowEmptyArchive: true, artifacts: 'nsre-*-*-static', fingerprint: true, onlyIfSuccessful: true
+                      if (GIT_BRANCH ==~ /master/ ) {
+                        echo "Create a release as this is a master merge ..."
+                        withCredentials([usernamePassword(credentialsId: 'github-personal-jenkins', passwordVariable: 'GITHUB_TOKEN', usernameVariable: 'GITHUB_USER')]) {
+                            env.REPOSITORY = "nsre"
+                            sh """                            
+                            ARTIFACT_FILE=\$(ls nsre-*-*-static)
+                            gzip \$ARTIFACT_FILE
+                            git tag v${BUILD_VERSION}; git push http://${GITHUB_USER}:${GITHUB_TOKEN}@github.com/${GITHUB_USER}/${REPOSITORY} --tags
+                            GITHUB_USER=$GITHUB_USER REPOSITORY=${REPOSITORY} GITHUB_TOKEN=$GITHUB_TOKEN ARTIFACT_FILE=\${ARTIFACT_FILE}.gz ./create-github-release.sh"""
+    // some block
+                        }
+                      }
                     }
                     else {
-                      echo "Not collecting artifacts as branch does not start with 'release' or branch is not 'develop', 'jenkins'"
+                      echo "Not collecting artifacts as branch"
                     }// If GIT_BRANCH
                 } //script
             }
@@ -54,7 +91,7 @@ pipeline {
         always {
             script {
                 utils.apply_maintenance_policy_per_branch()
-                currentBuild.description = """Artifact version: ${BUILD_VERSION}<br/>
+                currentBuild.description = """Artifact version: ${BUILD_VERSION}
 Artifact revision: ${GIT_REVISION}"""
             }
         }
