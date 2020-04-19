@@ -45,8 +45,10 @@ EOF
                 script {
                     utils.run_build_script([
                     //Make sure you build this image ready - having user jenkins and cache go mod for that user.
-                        'docker_image': 'golang-alpine-build-jenkins', 
+                        'docker_image': 'golang-alpine-build-jenkins:latest', 
                         'docker_net_opt': '',
+                        'docker_extra_opt': '--name golang-alpine-build-jenkins',
+                        'outside_scripts': ['save-docker-image-cache.sh'],
                         //'extra_build_scripts': ['fix-godir-ownership.sh'],
                         //'run_as_user': ['fix-godir-ownership.sh': 'root'],
                     ])
