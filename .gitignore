@@ -29,3 +29,4 @@ syslog*
 nsre*
 *.orig
 *.log
+.gobuild-linux-cgo

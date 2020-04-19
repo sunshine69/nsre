@@ -9,6 +9,9 @@ pipeline {
         stage('Checkout') {
             steps {
                 script {
+                env.BUILD_VERSION = VersionNumber projectStartDate: '2018-11-07', versionNumberString: "${BUILD_NUMBER}", versionPrefix: "2.2.", worstResultForIncrement: 'SUCCESS'
+                echo "Version:  ${BUILD_VERSION}"
+
                 GIT_REVISION = sh(returnStdout: true, script: """
                     git rev-parse --short HEAD"""
                 ).trim()
@@ -22,19 +25,34 @@ pipeline {
                 }//script
             }//steps
         }//stage
-
-        stage('Build') {
+        
+        stage('Generate build scripts') {
             steps {
                 script {
-                    echo "Start build"
-                    VERSION_PREFIX = "${GIT_BRANCH}-${GIT_REVISION}-".replace('/', '-')
-                    BUILD_VERSION = VersionNumber projectStartDate: '2018-11-07', versionNumberString: "${BUILD_NUMBER}", versionPrefix: "${VERSION_PREFIX}", worstResultForIncrement: 'SUCCESS'
-                    echo "Version:  $BUILD_VERSION"
-                    echo "Revision: $GIT_REVISION"
-                    sh './build-static.sh'
-                }
-            }
+                  utils.generate_add_user_script()
+                  //utils.generate_aws_environment()
+                  sh '''cat <<EOF > build.sh
+./build-jenkins.sh
+EOF
+'''
+                    sh 'chmod +x build.sh'
+                }//script
+            }//steps
         }
+
+        stage('Run the command within the docker environment') {
+            steps {
+                script {
+                    utils.run_build_script([
+                    //Make sure you build this image ready - having user jenkins and cache go mod for that user.
+                        'docker_image': 'golang-alpine-build-jenkins', 
+                        'docker_net_opt': '',
+                        //'extra_build_scripts': ['fix-godir-ownership.sh'],
+                        //'run_as_user': ['fix-godir-ownership.sh': 'root'],
+                    ])
+                }//script
+            }//steps
+        }//stage
 
         stage('Gather artifacts') {
             steps {
@@ -42,7 +60,7 @@ pipeline {
                     utils.save_build_data(['artifact_class': 'nsre'])
 
                     if (PUSH_DOCKER_IMAGE_AND_DEPLOY_TO_INT) {
-                      archiveArtifacts allowEmptyArchive: true, artifacts: 'nsre-linux-amd64-static', fingerprint: true, onlyIfSuccessful: true
+                      archiveArtifacts allowEmptyArchive: true, artifacts: 'nsre-*-*-static', fingerprint: true, onlyIfSuccessful: true
                     }
                     else {
                       echo "Not collecting artifacts as branch does not start with 'release' or branch is not 'develop', 'jenkins'"
@@ -56,7 +74,7 @@ pipeline {
         always {
             script {
                 utils.apply_maintenance_policy_per_branch()
-                currentBuild.description = """Artifact version: ${BUILD_VERSION}<br/>
+                currentBuild.description = """Artifact version: ${BUILD_VERSION}
 Artifact revision: ${GIT_REVISION}"""
             }
         }
