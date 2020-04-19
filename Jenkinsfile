@@ -9,7 +9,7 @@ pipeline {
         stage('Checkout') {
             steps {
                 script {
-                env.BUILD_VERSION = VersionNumber projectStartDate: '2018-11-07', versionNumberString: "${BUILD_NUMBER}", versionPrefix: "0.0.", worstResultForIncrement: 'SUCCESS'
+                env.BUILD_VERSION = VersionNumber projectStartDate: '2019-11-13', versionNumberString: "${BUILD_NUMBER}", versionPrefix: "1.", worstResultForIncrement: 'SUCCESS'
                 echo "Version:  ${BUILD_VERSION}"
 
                 GIT_REVISION = sh(returnStdout: true, script: """
