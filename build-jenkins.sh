@@ -3,6 +3,10 @@
 VER=$(git rev-parse --short HEAD)
 sed -i "s/const Version = .*/const Version = \"${VER}\"/" cmd/version.go
 
+echo "If you change templates while developing remember to run "
+echo "go-bindata -fs -nomemcopy -o cmd/bindata.go -pkg cmd  templates/..."
+echo "and then commit changes into git."
+
 export CGO_ENABLED=1
 export GOOS=linux
 export GOARCH=amd64

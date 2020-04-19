@@ -47,8 +47,11 @@ EOF
                     //Make sure you build this image ready - having user jenkins and cache go mod for that user.
                         'docker_image': 'golang-alpine-build-jenkins:latest', 
                         'docker_net_opt': '',
+//define the name here so we can save a image cache in the script save-docker-image-cache.sh
                         'docker_extra_opt': '--name golang-alpine-build-jenkins',
-                        'outside_scripts': ['save-docker-image-cache.sh'],
+//Uncomment these when you build with the golang-alpine from scratch. After we
+//can commented out as the image is saved
+                        //'outside_scripts': ['save-docker-image-cache.sh'],
                         //'extra_build_scripts': ['fix-godir-ownership.sh'],
                         //'run_as_user': ['fix-godir-ownership.sh': 'root'],
                     ])
