@@ -17,7 +17,7 @@ pipeline {
                 ).trim()
                 def PWD = pwd()
                 echo "Check out REVISION: $GIT_REVISION on $PWD"
-                PUSH_DOCKER_IMAGE_AND_DEPLOY_TO_INT = (['master', 'jenkins'].contains(GIT_BRANCH) ||
+                DO_GATHER_ARTIFACT_BRANCH = (['master', 'jenkins'].contains(GIT_BRANCH) ||
                     GIT_BRANCH ==~ /release\-[\d\-\.]+/ ||
                     GIT_BRANCH ==~ /[^\s]+enable_docker_image_push$/)
                 checkout changelog: false, poll: false, scm: [$class: 'GitSCM', branches: [[name: '*/master']], doGenerateSubmoduleConfigurations: false, extensions: [[$class: 'RelativeTargetDirectory', relativeTargetDir: 'jenkins-helper']], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'github-personal-jenkins', url: 'https://github.com/sunshine69/jenkins-helper.git']]]
@@ -64,11 +64,20 @@ EOF
                 script {
                     utils.save_build_data(['artifact_class': 'nsre'])
 
-                    if (PUSH_DOCKER_IMAGE_AND_DEPLOY_TO_INT) {
+                    if (DO_GATHER_ARTIFACT_BRANCH) {
                       archiveArtifacts allowEmptyArchive: true, artifacts: 'nsre-*-*-static', fingerprint: true, onlyIfSuccessful: true
+                      if (GIT_BRANCH ==~ /master/ ) {
+                        echo "Create a release as this is a master merge ..."
+                        withCredentials([usernamePassword(credentialsId: 'github-personal-jenkins', passwordVariable: 'GITHUB_TOKEN', usernameVariable: 'GITHUB_USER')]) {
+                            sh """
+                            git tag v${BUILD_VERSION}; git push --tags
+                            GITHUB_USER=$GITHUB_USER REPOSITORY=nsre GITHUB_TOKEN=$GITHUB_TOKEN ./create-github-release.sh"""
+    // some block
+                        }
+                      }
                     }
                     else {
-                      echo "Not collecting artifacts as branch does not start with 'release' or branch is not 'develop', 'jenkins'"
+                      echo "Not collecting artifacts as branch"
                     }// If GIT_BRANCH
                 } //script
             }
