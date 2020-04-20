@@ -25,7 +25,7 @@ pipeline {
                 }//script
             }//steps
         }//stage
-        
+
         stage('Generate build scripts') {
             steps {
                 script {
@@ -33,6 +33,7 @@ pipeline {
                   //utils.generate_aws_environment()
                   sh '''cat <<EOF > build.sh
 ./build-jenkins.sh
+gzip nsre-*-*-static
 EOF
 '''
                     sh 'chmod +x build.sh'
@@ -45,7 +46,7 @@ EOF
                 script {
                     utils.run_build_script([
                     //Make sure you build this image ready - having user jenkins and cache go mod for that user.
-                        'docker_image': 'golang-alpine-build-jenkins:latest', 
+                        'docker_image': 'golang-alpine-build-jenkins:latest',
                         'docker_net_opt': '',
 //define the name here so we can save a image cache in the script save-docker-image-cache.sh
                         'docker_extra_opt': '--name golang-alpine-build-jenkins',
@@ -65,16 +66,15 @@ EOF
                     utils.save_build_data(['artifact_class': 'nsre'])
 
                     if (DO_GATHER_ARTIFACT_BRANCH) {
-                      archiveArtifacts allowEmptyArchive: true, artifacts: 'nsre-*-*-static', fingerprint: true, onlyIfSuccessful: true
+                      archiveArtifacts allowEmptyArchive: true, artifacts: 'nsre-*-*-static.gz', fingerprint: true, onlyIfSuccessful: true
                       if (GIT_BRANCH ==~ /master/ ) {
                         echo "Create a release as this is a master merge ..."
                         withCredentials([usernamePassword(credentialsId: 'github-personal-jenkins', passwordVariable: 'GITHUB_TOKEN', usernameVariable: 'GITHUB_USER')]) {
                             env.REPOSITORY = "nsre"
-                            sh """                            
-                            ARTIFACT_FILE=\$(ls nsre-*-*-static)
-                            gzip \$ARTIFACT_FILE
+                            sh """
+                            ARTIFACT_FILES=\$(ls nsre-*-*-static.gz)
                             git tag v${BUILD_VERSION}; git push http://${GITHUB_USER}:${GITHUB_TOKEN}@github.com/${GITHUB_USER}/${REPOSITORY} --tags
-                            GITHUB_USER=$GITHUB_USER REPOSITORY=${REPOSITORY} GITHUB_TOKEN=$GITHUB_TOKEN ARTIFACT_FILE=\${ARTIFACT_FILE}.gz ./create-github-release.sh"""
+                            GITHUB_USER=$GITHUB_USER REPOSITORY=${REPOSITORY} GITHUB_TOKEN=$GITHUB_TOKEN ARTIFACT_FILES=\${ARTIFACT_FILES} ./create-github-release.sh"""
     // some block
                         }
                       }
