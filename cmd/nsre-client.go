@@ -9,7 +9,7 @@ import (
     "io/ioutil"
     "net/http"
     "time"
-    jwt "github.com/dgrijalva/jwt-go"
+    jwt "github.com/golang-jwt/jwt"
 )
 
 //RunCommand -

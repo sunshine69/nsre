@@ -20,7 +20,7 @@ import (
     "log"
 	"net/http"
 	"github.com/gorilla/mux"
-	jwt "github.com/dgrijalva/jwt-go"
+	jwt "github.com/golang-jwt/jwt"
 	"github.com/json-iterator/go"
 )
 
