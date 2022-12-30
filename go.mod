@@ -3,7 +3,7 @@ module github.com/sunshine69/nsre
 go 1.13
 
 require (
-	github.com/aws/aws-sdk-go v1.25.43
+	github.com/aws/aws-sdk-go v1.33.0
 	github.com/bvinc/go-sqlite-lite v0.6.1
 	github.com/golang-jwt/jwt v3.2.1+incompatible
 	github.com/google/uuid v1.1.1
