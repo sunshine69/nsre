@@ -3,16 +3,20 @@ module github.com/sunshine69/nsre
 go 1.13
 
 require (
-	github.com/aws/aws-sdk-go v1.34.0
+	cloud.google.com/go/compute v1.18.0 // indirect
+	github.com/aws/aws-sdk-go v1.44.209
 	github.com/bvinc/go-sqlite-lite v0.6.1
-	github.com/golang-jwt/jwt v3.2.1+incompatible
-	github.com/google/uuid v1.1.1
-	github.com/gorilla/mux v1.7.3
-	github.com/gorilla/sessions v1.2.0
-	github.com/json-iterator/go v1.1.8
-	github.com/mileusna/crontab v0.0.0-20180909013013-f182897de5d8
-	github.com/nxadm/tail v1.4.4
-	golang.org/x/crypto v0.1.0
-	golang.org/x/oauth2 v0.0.0-20191122200657-5d9234df094c
-	gopkg.in/yaml.v2 v2.2.7
+	github.com/fsnotify/fsnotify v1.6.0 // indirect
+	github.com/golang-jwt/jwt v3.2.2+incompatible
+	github.com/google/uuid v1.3.0
+	github.com/gorilla/mux v1.8.0
+	github.com/gorilla/sessions v1.2.1
+	github.com/json-iterator/go v1.1.12
+	github.com/mileusna/crontab v1.2.0
+	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
+	github.com/nxadm/tail v1.4.8
+	golang.org/x/crypto v0.6.0
+	golang.org/x/net v0.7.0 // indirect
+	golang.org/x/oauth2 v0.5.0
+	gopkg.in/yaml.v2 v2.4.0
 )
