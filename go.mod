@@ -15,8 +15,7 @@ require (
 	github.com/mileusna/crontab v1.2.0
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/nxadm/tail v1.4.8
-	golang.org/x/crypto v0.21.0
-	golang.org/x/net v0.23.0 // indirect
+	golang.org/x/crypto v0.31.0
 	golang.org/x/oauth2 v0.5.0
 	gopkg.in/yaml.v2 v2.4.0
 )
